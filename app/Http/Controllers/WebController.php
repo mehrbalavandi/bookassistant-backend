@@ -12,39 +12,36 @@ class WebController extends Controller
         return view('home'); // این به فایل home.blade.php اشاره میکنه
     }
 
-    // ۲. شبیه‌سازی انتقال به درگاه پرداخت
+// شبیه‌سازی انتقال به درگاه پرداخت
     public function checkout(Request $request) {
-        // در دنیای واقعی اینجا کاربر باید لاگین باشد، برای تست فرض میکنیم کاربر شناسه ۱ است
-        // $userId = auth()->id(); 
-        $userId = 1; // یک کاربر نمونه برای تست محلی
+        $user = auth()->user(); // گرفتن اطلاعات کاربری که لاگین کرده است
 
-        // در اینجا به درگاه متصل می‌شوید و یک شماره تراکنش (Authority) می‌گیرید
-        // سپس کاربر رو به درگاه بانک هدایت می‌کنید.
-        // فعلاً برای تست، کاربر را مستقیماً به صفحه تایید پرداخت می‌فرستیم:
-        
-        return redirect()->route('payment.verify', [
-            'status' => 'OK',
-            'user_id' => $userId
+        // یک شماره پیگیری تصادفی برای شبیه‌سازی می‌سازیم
+        $transactionId = rand(100000, 999999);
+
+        // کاربر را به صفحه درگاه پرداخت شبیه‌ساز خودمان می‌فرستیم
+        return view('payment.gateway', [
+            'user' => $user,
+            'amount' => '۱۴۹,۰۰۰',
+            'transactionId' => $transactionId
         ]);
     }
 
-    // ۳. شبیه‌سازی بازگشت از بانک و فعال‌سازی اشتراک
+    // بررسی بازگشت از بانک و فعال‌سازی اشتراک
     public function verifyPayment(Request $request) {
         $status = $request->query('status');
-        $userId = $request->query('user_id');
+        $user = auth()->user();
 
-        if ($status === 'OK') {
-            // پیدا کردن کاربر و تغییر وضعیت اشتراک به Premium
-            $user = User::find($userId);
-            if ($user) {
-                $user->is_premium = true;
-                $user->save();
-            }
+        if ($status === 'success') {
+            // آپدیت دیتابیس: فعال کردن اشتراک کاربر
+            $user->is_premium = true;
+            $user->save();
 
-            // نمایش صفحه موفقیت‌آمیز بودن پرداخت
-            return "پرداخت شما با موفقیت انجام شد! اشتراک شما فعال شد و اکنون می‌توانید از طریق اپلیکیشن فلاتر فایل‌ها را دانلود کنید.";
+            // بازگشت به صفحه اصلی با پیام موفقیت
+            return redirect()->route('home')->with('success', 'پرداخت با موفقیت انجام شد. اشتراک ویژه شما فعال است!');
         }
 
-        return "پرداخت ناموفق بود یا توسط کاربر لغو شد.";
+        // بازگشت به صفحه اصلی با پیام خطا
+        return redirect()->route('home')->with('error', 'پرداخت لغو شد یا ناموفق بود.');
     }
 }

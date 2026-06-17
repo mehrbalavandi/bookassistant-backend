@@ -12,18 +12,35 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased">
 
+@if(session('success'))
+        <div class="bg-green-500 text-white text-center py-3 font-bold">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="bg-red-500 text-white text-center py-3 font-bold">{{ session('error') }}</div>
+    @endif
+
     <header class="bg-white shadow-sm sticky top-0 z-50">
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">A</div>
-                <span class="text-xl font-bold text-slate-900">آکادمی زبان</span>
+                <span class="text-xl font-bold text-slate-900">آکادمی ما</span>
             </div>
-            <nav class="hidden md:flex gap-6 text-sm font-medium text-slate-600">
-                <a href="#features" class="hover:text-blue-600 transition">ویژگی‌ها</a>
-                <a href="#testimonials" class="hover:text-blue-600 transition">نظرات</a>
-                <a href="#faq" class="hover:text-blue-600 transition">سوالات متداول</a>
-            </nav>
-            <a href="#pricing" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full text-sm font-medium transition">خرید اشتراک</a>
+            
+            <div class="flex items-center gap-4">
+                @auth
+                    <span class="text-sm font-bold text-slate-700">سلام، {{ auth()->user()->name }} عزیز!</span>
+                    @if(auth()->user()->is_premium)
+                        <span class="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded">کاربر ویژه (Premium)</span>
+                    @endif
+                    <form action="{{ route('logout') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-bold cursor-pointer">خروج</button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="text-sm font-bold text-slate-600 hover:text-blue-600 transition">ورود</a>
+                    <a href="{{ route('register') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full text-sm font-medium transition">ثبت‌نام</a>
+                @endauth
+            </div>
         </div>
     </header>
 
