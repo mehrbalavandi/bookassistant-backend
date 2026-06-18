@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Models\User; // ⚠️ حتماً در بالای فایل باشد
+use Illuminate\Support\Facades\Hash; // ⚠️ حتماً در بالای فایل باشد
 use Illuminate\Http\Request;
 // این سه خط آدرس کلاس‌های پرداخت را به لاراول معرفی می‌کنند
 use Shetabit\Multipay\Invoice;
@@ -28,6 +29,41 @@ class WebController extends Controller
 
         // ۳. اگر لاگین کرده ولی ادمین نیست (کاربر عادی) -> داشبورد کاربران عادی را نشان بده
         return view('dashboard'); 
+    }
+
+    // ۱. نمایش صفحه فرم ثبت‌نام
+    public function showRegisterForm()
+    {
+        // اگر کاربر از قبل لاگین هست، نیازی نیست دوباره ثبت نام کند
+        if (Auth::check()) {
+            return redirect('/');
+        }
+        return view('register');
+    }
+
+    // ۲. پردازش اطلاعات فرم، ذخیره در دیتابیس و لاگین آنی
+    public function register(Request $request)
+    {
+        // اعتبار سنجی داده‌های ورودی از سایت
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed', // فیلد تکرار رمز عبور اجباری است
+        ]);
+
+        // ایجاد کاربر جدید در دیتابیس (با وضعیت کاربر عادی)
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'is_admin' => false, 
+        ]);
+
+        // 🔥 خواسته دوم شما: لاگین کردن آنی کاربر بلافاصله پس از ثبت‌نام موفق
+        Auth::login($user);
+
+        // هدایت کاربر به صفحه اصلی (که حالا چون لاگین شده، داشبورد جدید را می‌بیند)
+        return redirect('/')->with('success', 'ثبت‌نام شما با موفقیت انجام شد!');
     }
 
 // ۱. ارسال کاربر به درگاه پرداخت واقعی

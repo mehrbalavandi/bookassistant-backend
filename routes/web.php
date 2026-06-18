@@ -12,9 +12,8 @@ Route::get('/', [WebController::class, 'homePage'])->name('home');
 
 use App\Http\Controllers\WebAuthController;
 
-// مسیرهای مربوط به ثبت‌نام
-Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [WebAuthController::class, 'register']);
+Route::get('/register', [WebController::class, 'showRegisterForm'])->name('register');
+Route::post('/register', [WebController::class, 'register'])->name('register.store');
 
 // مسیرهای مربوط به ورود
 Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
