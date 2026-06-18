@@ -8,12 +8,26 @@ use Illuminate\Http\Request;
 use Shetabit\Multipay\Invoice;
 use Shetabit\Payment\Facade\Payment;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
+//
+use Illuminate\Support\Facades\Auth;
 
 class WebController extends Controller
 {
     // ۱. نمایش صفحه اصلی
     public function homePage() {
-        return view('home'); // این به فایل home.blade.php اشاره میکنه
+        // ۱. بررسی اینکه آیا کاربر اصلاً لاگین کرده است یا خیر؟
+        if (Auth::check()) {
+            
+            // ۲. اگر لاگین کرده، بررسی کنیم آیا ادمین است؟
+            // نکته: اگر در دیتابیس فیلدی مثل is_admin دارید، خط زیر را فعال کنید:
+            // if (Auth::user()->is_admin) { return redirect('/admin'); }
+            
+            // اگر در حال حاضر هر کاربر لاگین شده‌ای در سیستم شما ادمین محسوب می‌شود:
+            return redirect('/admin');
+        }
+
+        // ۳. اگر کاربر لاگین نکرده بود (کاربر مهمان یا عادی)، همان صفحه اصلی همیشگی را نشان بده
+        return view('welcome'); // یا هر ویویی که قبلاً در این متد return می‌شد
     }
 
 // ۱. ارسال کاربر به درگاه پرداخت واقعی
