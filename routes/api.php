@@ -1,28 +1,22 @@
 <?php
 
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ContentController;
 use Illuminate\Support\Facades\Route;
-
-// مسیرهای عمومی (بدون نیاز به لاگین)
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-
-// مسیرهای محافظت شده (کاربر حتماً باید توکن معتبر داشته باشد)
-Route::middleware('auth:sanctum')->group(function () {
-    
-    // دریافت لیست محتواها و نسخه‌های آن‌ها جهت همگام‌سازی در فلاتر
-    Route::get('/contents', [ContentController::class, 'index']);
-    
-    // دانلود امن فایل صوتی (بررسی اشتراک درون این متد انجام می‌شود)
-    Route::get('/contents/{id}/download', [ContentController::class, 'downloadSecureFile']);
-    
-});
-
 use App\Http\Controllers\Api\BookController;
 
-// لیست همه کتاب‌ها
-Route::get('/books', [BookController::class, 'index']);
+// 🟢 مسیرهای عمومی (بدون نیاز به قفل Sanctum - برای همه باز است)
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
 
-// دریافت جزئیات، صوت‌ها و محتوای JSON یک کتاب خاص
-Route::get('/books/{id}', [BookController::class, 'show']);
+
+// 🔴 مسیرهای محافظت‌شده (فقط کاربران لاگین شده به همراه توکن معتبر)
+Route::middleware('auth:sanctum')->group(function () {
+    
+    // خروج از حساب
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // دریافت اطلاعات کتاب‌ها (مخصوص دانشجوهای لاگین شده)
+    Route::get('/books', [BookController::class, 'index']);
+    Route::get('/books/{id}', [BookController::class, 'show']);
+
+});

@@ -1,37 +1,90 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $request) {
-        $data = $request->validate([
-            'name' => 'required|string',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:6'
+    // ۱. متد ثبت‌نام کاربر جدید از طریق اپلیکیشن فلاتر
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users|max:255',
+            'password' => 'required|string|min:8',
         ]);
 
         $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'is_admin' => false, // کاربران اپلیکیشن به صورت پیش‌فرض ادمین نیستند
         ]);
 
-        $token = $user->createToken('flutter_token')->plainTextToken;
-        return response()->json(['user' => $user, 'token' => $token], 201);
+        // ایجاد توکن برای کاربر تازه‌وارد
+        $token = $user->createToken('flutter-app-token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'ثبت‌نام با موفقیت انجام شد.',
+            'token' => $token,
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ], 201);
     }
 
-    public function login(Request $request) {
+    // ۲. متد ورود (Login) کاربران قدیمی
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
         $user = User::where('email', $request->email)->first();
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'اطلاعات ورود اشتباه است'], 401);
+
+        // بررسی وجود کاربر و صحت رمز عبور
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'مشخصات وارد شده با اطلاعات ما مطابقت ندارد.'
+            ], 401);
         }
 
-        $token = $user->createToken('flutter_token')->plainTextToken;
-        return response()->json(['user' => $user, 'token' => $token], 200);
+        // 💡 ایده برای آینده (بررسی وضعیت اشتراک):
+        // اگر فیلدی مثل has_premium در دیتابیس دارید، می‌توانید اینجا چک کنید.
+
+        // ایجاد توکن جدید برای این نشست (Session)
+        $token = $user->createToken('flutter-app-token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'ورود با موفقیت انجام شد.',
+            'token' => $token,
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_admin' => $user->is_admin, // فلاتر متوجه شود این کاربر ادمین است یا خیر
+            ]
+        ]);
+    }
+
+    // ۳. خروج از حساب و ابطال توکن
+    public function logout(Request $request)
+    {
+        // پاک کردن توکنی که در حال حاضر با آن درخواست ارسال شده است
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'با موفقیت از حساب خود خارج شدید.'
+        ]);
     }
 }

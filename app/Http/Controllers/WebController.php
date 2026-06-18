@@ -14,20 +14,20 @@ use Illuminate\Support\Facades\Auth;
 class WebController extends Controller
 {
     // ۱. نمایش صفحه اصلی
-    public function homePage() {
-        // ۱. بررسی اینکه آیا کاربر اصلاً لاگین کرده است یا خیر؟
-        if (Auth::check()) {
-            
-            // ۲. اگر لاگین کرده، بررسی کنیم آیا ادمین است؟
-            // نکته: اگر در دیتابیس فیلدی مثل is_admin دارید، خط زیر را فعال کنید:
-            // if (Auth::user()->is_admin) { return redirect('/admin'); }
-            
-            // اگر در حال حاضر هر کاربر لاگین شده‌ای در سیستم شما ادمین محسوب می‌شود:
+    public function homePage()
+    {
+        // ۱. اگر کاربر اصلاً لاگین نکرده است -> صفحه معرفی (welcome) را نشان بده
+        if (!Auth::check()) {
+            return view('welcome');
+        }
+
+        // ۲. اگر لاگین کرده و ادمین است -> بفرستش به پنل فیلامنت
+        if (Auth::user()->is_admin) {
             return redirect('/admin');
         }
 
-        // ۳. اگر کاربر لاگین نکرده بود (کاربر مهمان یا عادی)، همان صفحه اصلی همیشگی را نشان بده
-        return view('welcome'); // یا هر ویویی که قبلاً در این متد return می‌شد
+        // ۳. اگر لاگین کرده ولی ادمین نیست (کاربر عادی) -> داشبورد کاربران عادی را نشان بده
+        return view('dashboard'); 
     }
 
 // ۱. ارسال کاربر به درگاه پرداخت واقعی
@@ -81,4 +81,16 @@ class WebController extends Controller
             return redirect()->route('home')->with('error', 'پرداخت ناموفق بود: ' . $exception->getMessage());
         }
     }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+
+        // پاک کردن جلسات قبلی برای امنیت بیشتر
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        // هدایت کاربر به صفحه اصلی سایت
+        return redirect('/');
+    }    
 }

@@ -28,3 +28,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/payment/checkout', [App\Http\Controllers\WebController::class, 'checkout'])->name('payment.checkout');
     Route::get('/payment/verify', [App\Http\Controllers\WebController::class, 'verifyPayment'])->name('payment.verify');
 });
+
+Route::post('/logout', [WebController::class, 'logout'])->name('web.logout');
