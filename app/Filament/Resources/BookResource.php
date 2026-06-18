@@ -12,14 +12,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-
+// ⚠️ این سه خط را حتماً اضافه کنید تا ابزارهای فرم شناسایی شوند:
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Get; // این کلاس برای خواندن زنده اطلاعات فرم استفاده می‌شود
+use Filament\Forms\Get;
 
 class BookResource extends Resource
 {
-    protected static ?string $model = Book::class;
+protected static ?string $model = Book::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
@@ -35,26 +35,23 @@ class BookResource extends Resource
                     ->label('نام پوشه در سرور (فقط انگلیسی)')
                     ->helperText('مثال: ielts-book-1 (بدون فاصله)')
                     ->required()
-                    ->live(), // با تایپ شما، سیستم نام پوشه را درک می‌کند
+                    ->live(), // خواندن زنده نام پوشه برای مسیردهی فایل‌ها
 
                 FileUpload::make('json_file')
-                    ->label('فایل ساختار JSON (حاوی ترجمه‌ها و محتوا)')
+                    ->label('فایل ساختار JSON (ترجمه‌ها و محتوا)')
                     ->acceptedFileTypes(['application/json'])
-                    // ذخیره در: books/ielts-book-1/
                     ->directory(fn (Get $get) => 'books/' . $get('folder_name')),
 
                 FileUpload::make('audio_files')
                     ->label('فایل‌های صوتی')
-                    ->multiple() // قابلیت انتخاب همزمان چند فایل
+                    ->multiple()
                     ->acceptedFileTypes(['audio/*'])
-                    // ذخیره در: books/ielts-book-1/audio/
                     ->directory(fn (Get $get) => 'books/' . $get('folder_name') . '/audio'),
 
                 FileUpload::make('images')
                     ->label('تصاویر کتاب')
-                    ->multiple() // قابلیت انتخاب همزمان چند فایل
+                    ->multiple()
                     ->image()
-                    // ذخیره در: books/ielts-book-1/images/
                     ->directory(fn (Get $get) => 'books/' . $get('folder_name') . '/images'),
             ]);
     }
