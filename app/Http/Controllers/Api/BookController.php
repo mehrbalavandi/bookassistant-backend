@@ -5,11 +5,24 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Book;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class BookController extends Controller
 {
-    // ۱. دریافت لیست تمام کتاب‌ها (برای صفحه اصلی اپلیکیشن)
     public function index()
+    {
+        // گرفتن تمام کتاب‌ها از دیتابیس
+        $books = Book::all();
+
+        // ارسال پاسخ به صورت JSON با کد وضعیت 200 (موفقیت‌آمیز)
+        return response()->json([
+            'success' => true,
+            'data' => $books
+        ], 200);
+    }
+
+    // ۱. دریافت لیست تمام کتاب‌ها (برای صفحه اصلی اپلیکیشن)
+    public function index2()
     {
         $books = Book::select('id', 'title', 'folder_name', 'images')->get();
 
