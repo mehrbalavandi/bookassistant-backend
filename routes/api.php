@@ -18,3 +18,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/contents/{id}/download', [ContentController::class, 'downloadSecureFile']);
     
 });
+
+use App\Http\Controllers\Api\BookController;
+
+// لیست همه کتاب‌ها
+Route::get('/books', [BookController::class, 'index']);
+
+// دریافت جزئیات، صوت‌ها و محتوای JSON یک کتاب خاص
+Route::get('/books/{id}', [BookController::class, 'show']);
