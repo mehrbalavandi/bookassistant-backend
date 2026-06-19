@@ -44,4 +44,10 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
         // فقط اگر کاربر لاگین شده is_admin برابر true داشت، اجازه ورود بده
         return (bool) $this->is_admin === true;
     }  
+
+    // کتاب‌های خریداری شده توسط این کاربر
+    public function purchasedBooks()
+    {
+        return $this->belongsToMany(Book::class, 'book_user')->withTimestamps();
+    }    
 }

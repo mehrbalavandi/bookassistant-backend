@@ -13,4 +13,7 @@ Route::get('/books', [BookController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {    
     // خروج از حساب
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // دریافت کتاب‌های خریداری شده توسط کاربر فعلی
+    Route::get('/my-books', [BookController::class, 'myBooks']);
 });

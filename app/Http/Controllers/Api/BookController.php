@@ -76,4 +76,18 @@ class BookController extends Controller
             ]
         ]);
     }
+
+    public function myBooks(Request $request)
+    {
+        // استخراج کاربری که توکن را ارسال کرده است
+        $user = $request->user();
+
+        // دریافت کتاب‌های کاربر به همراه فیلدهای ضروری
+        $books = $user->purchasedBooks()->select('books.id', 'title', 'cover_image', 'cefr_level')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $books
+        ], 200);
+    }    
 }

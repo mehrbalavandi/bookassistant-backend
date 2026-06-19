@@ -22,4 +22,10 @@ class Book extends Model
         'audio_files' => 'array',
         'images' => 'array',
     ];
+
+    // کاربرانی که این کتاب را خریده‌اند
+    public function purchasers()
+    {
+        return $this->belongsToMany(User::class, 'book_user')->withTimestamps();
+    }    
 }
