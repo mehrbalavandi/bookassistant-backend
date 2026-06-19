@@ -83,7 +83,7 @@ class BookController extends Controller
         $user = $request->user();
 
         // دریافت کتاب‌های کاربر به همراه فیلدهای ضروری
-        $books = $user->purchasedBooks()->select('books.id', 'title', 'cover_image', 'cefr_level')->get();
+        $books = $user->purchasedBooks()->select('books.id', 'title')->get();
 
         return response()->json([
             'success' => true,

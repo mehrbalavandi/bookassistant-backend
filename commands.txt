@@ -1,0 +1,43 @@
+10770
+htrd
+300000
+
+git add .
+git commit -m "#"
+git push
+
+cd bookassistant-backend
+php artisan serve
+php artisan serve --host=0.0.0.0 --port=8000
+
+php artisan make:controller WebAuthController
+
+(پاک کردن حافظه پنهان)
+php artisan config:clear
+php artisan route:clear
+
+پاک کردن حافظه پنهان فیلامنت و لاراول
+php artisan config:clear
+php artisan route:clear
+php artisan filament:clear-cached-components
+
+بازسازی لیست فایل‌های PHP پروژه:
+composer dump-autoload
+
+پاک کردن تمام کَش‌های لاراول و فیلامنت به صورت یکجا:
+php artisan optimize:clear
+
+php artisan migrate
+
+شستشوی مغزی لاراوال:
+php artisan route:clear
+
+لیست مسیرها:
+php artisan route:list
+
+تست کردن خروجی API با دیتای تستی (Seeding) با استفاده از Tinker
+php artisan tinker
+برای خروج از تینکر کلمه exit را تایپ کنید و Enter بزنید.
+
+ساخت Database Seeder جهت تست API
+php artisan make:seeder BookUserSeeder
