@@ -14,6 +14,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // خروج از حساب
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // مسیر امنیتی برای دانلود متعلقات یک کتاب خاص
+    Route::get('/books/{book}/download', [BookController::class, 'download']);
+
     // دریافت کتاب‌های خریداری شده توسط کاربر فعلی
     Route::get('/my-books', [BookController::class, 'myBooks']);
 });

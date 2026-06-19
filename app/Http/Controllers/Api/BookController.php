@@ -89,5 +89,38 @@ class BookController extends Controller
             'success' => true,
             'data' => $books
         ], 200);
+    } 
+    
+    public function download(Request $request, Book $book)
+    {
+        $user = $request->user();
+
+        // ۱. بررسی امنیتی: آیا این کتاب در لیست خریدهای کاربر وجود دارد؟
+        $hasPurchased = $user->purchasedBooks()->where('book_id', $book->id)->exists();
+
+        if (!$hasPurchased) {
+            // اگر حق اشتراک نداشت، با کد 403 (Forbidden) دسترسی را مسدود می‌کنیم
+            return response()->json([
+                'success' => false,
+                'message' => 'شما حق اشتراک این کتاب را تهیه نکرده‌اید و اجازه دانلود ندارید.'
+            ], 403);
+        }
+
+        // ۲. پیدا کردن مسیر فایل در سرور
+        // فرض می‌کنیم در جدول books فیلدی به نام file_path دارید که آدرس فایل دانلودی در آن ذخیره شده است.
+        // مثال: 'books/ielts_vocab_package.zip'
+        $filePath = $book->file_path; 
+
+        // بررسی اینکه آیا فایل واقعاً در سرور وجود دارد یا نه
+        if (!$filePath || !Storage::exists($filePath)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'فایل این کتاب در سرور یافت نشد. لطفاً با پشتیبانی تماس بگیرید.'
+            ], 404);
+        }
+
+        // ۳. ارسال مستقیم فایل برای دانلود به سمت فلاتر
+        // این دستور، فایل را به صورت Stream به کلاینت می‌فرستد و آدرس واقعی فایل در سرور را مخفی نگه می‌دارد.
+        return Storage::download($filePath);
     }    
 }
