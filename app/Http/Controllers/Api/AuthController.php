@@ -76,15 +76,15 @@ class AuthController extends Controller
         ]);
     }
 
-    // ۳. خروج از حساب و ابطال توکن
+    // ۳. متد خروج (Logout) و باطل کردن توکن
     public function logout(Request $request)
     {
-        // پاک کردن توکنی که در حال حاضر با آن درخواست ارسال شده است
+        // حذف توکنی که کاربر با آن به API متصل شده است
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'با موفقیت از حساب خود خارج شدید.'
-        ]);
+            'message' => 'خروج با موفقیت انجام شد و توکن باطل گردید.'
+        ], 200);
     }
 }
