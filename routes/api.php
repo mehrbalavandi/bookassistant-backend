@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AuthController;
+use \App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\BookController;
 
@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BookController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::get('/books', [BookController::class, 'index']);
 
 // 🔴 مسیرهای محافظت‌شده (فقط کاربران لاگین شده به همراه توکن معتبر)
 Route::middleware('auth:sanctum')->group(function () {
@@ -16,9 +17,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // دریافت اطلاعات کتاب‌ها (مخصوص دانشجوهای لاگین شده)
-    Route::get('/books', [BookController::class, 'index']);
-    Route::get('/books/{id}', [BookController::class, 'show']);
+    // Route::get('/books', [BookController::class, 'index']);
+    // Route::get('/books/{id}', [BookController::class, 'show']);
 
 });
-
-Route::get('/books', [BookController::class, 'index']);
