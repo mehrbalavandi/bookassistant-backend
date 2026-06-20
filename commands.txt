@@ -41,3 +41,6 @@ php artisan tinker
 
 ساخت Database Seeder جهت تست API
 php artisan make:seeder BookUserSeeder
+
+توکن خونه:
+3|kad6FD6SGrUHMNqIq5ySEd9EIVKFVqk6n4aGAGaM38aca8f2
