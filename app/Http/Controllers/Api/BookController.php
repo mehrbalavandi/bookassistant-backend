@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Models\Book;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
@@ -10,12 +11,33 @@ use Illuminate\Http\Request;
 class BookController extends Controller
 {
     // ۱. ویترین عمومی: برگرداندن لیست تمام کتاب‌ها
-    public function index()
+    public function index(Request $request)
     {
         // گرفتن تمام کتاب‌ها از دیتابیس
         $books = Book::all();
 
-        // ارسال پاسخ به صورت JSON با کد وضعیت 200 (موفقیت‌آمیز)
+$purchasedBookIds = [];
+
+        // ۲. بررسی هوشمند: آیا درخواستی که از فلاتر آمده، حامل توکن است؟
+        if ($request->bearerToken()) {
+            // تلاش برای شناسایی کاربر از روی توکن
+            $user = auth('sanctum')->user();
+            
+            if ($user) {
+                // استخراج آیدی کتاب‌هایی که این کاربر یک‌بار برای همیشه خریده است
+                // (فرض بر این است که رابطه purchasedBooks در مدل User تعریف شده است)
+                $purchasedBookIds = $user->purchasedBooks()->pluck('books.id')->toArray();
+            }
+        }
+
+        // ۳. اضافه کردن کلید is_purchased به تک‌تک کتاب‌ها
+        $books->transform(function ($book) use ($purchasedBookIds) {
+            // اگر آیدی کتاب در لیست خریدهای کاربر بود، مقدار true وگرنه false می‌گیرد
+            $book->is_purchased = in_array($book->id, $purchasedBookIds);
+            return $book;
+        });
+
+        // ۴. ارسال پاسخ نهایی به فلاتر
         return response()->json([
             'success' => true,
             'data' => $books
