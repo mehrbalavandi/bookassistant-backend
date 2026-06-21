@@ -16,7 +16,7 @@ class BookController extends Controller
         // گرفتن تمام کتاب‌ها از دیتابیس
         $books = Book::all();
 
-$purchasedBookIds = [];
+        $purchasedBookIds = [];
 
         // ۲. بررسی هوشمند: آیا درخواستی که از فلاتر آمده، حامل توکن است؟
         if ($request->bearerToken()) {

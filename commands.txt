@@ -42,5 +42,12 @@ php artisan tinker
 ساخت Database Seeder جهت تست API
 php artisan make:seeder BookUserSeeder
 
-توکن خونه:
-3|kad6FD6SGrUHMNqIq5ySEd9EIVKFVqk6n4aGAGaM38aca8f2
+بعد از نصب افزونه PHP Intelephense (با آیکون فیل)، عبارت @builtin php را در بخش جستجوی افزونه‌های VS Code سرچ کنید و افزونه پیش‌فرض خود VS Code به نام "PHP Language Features" را غیرفعال (Disable) کنید تا با هم تداخل نداشته باشند.
+
+افزونه‌ها به تنهایی کافی نیستند. شما باید یک پکیج به خود پروژه لاراول اضافه کنید تا یک فایل راهنما برای ادیتور بسازد.
+ترمینال را باز کنید و دستورات زیر را به ترتیب اجرا کنید:
+composer require --dev barryvdh/laravel-ide-helper
+
+پس از نصب، این دستور را اجرا کنید تا فایل راهنما (Meta) تولید شود:
+php artisan ide-helper:generate
+php artisan ide-helper:models -N
