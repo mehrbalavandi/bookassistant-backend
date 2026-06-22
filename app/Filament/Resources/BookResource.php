@@ -49,7 +49,8 @@ class BookResource extends Resource
                             FileUpload::make('sample_file_path')
                                 ->label('فایل دمو کلی (PDF یا Zip)')
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples'),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples')
+                                ->preserveFilenames(),
 
                             TextInput::make('sample_version')
                                 ->label('نسخه اجزای نمونه')
@@ -64,7 +65,8 @@ class BookResource extends Resource
                                 ->label('فایل‌های صوتی نمونه (فصل اول)')
                                 ->multiple()
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/audio'),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/audio')
+                                ->preserveFilenames(),
                         ]),
 
                         // 🆕 جدید: بخش آپلود تصاویر نمونه (مثلاً تصاویر فصل اول)
@@ -74,7 +76,8 @@ class BookResource extends Resource
                                 ->multiple()
                                 ->image()
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/images'),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/images')
+                                ->preserveFilenames(),
                         ]),
 
                         // بخش فایل‌های اصلی و پولی (بدون تغییر نسبت به قبل)
@@ -83,7 +86,8 @@ class BookResource extends Resource
                                 ->label('فایل ساختار JSON اصلی')
                                 ->disk('local')
                                 ->acceptedFileTypes(['application/json'])
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name')),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name'))
+                                ->preserveFilenames(),
                         ]),
 
                         Grid::make(2)->schema([
@@ -91,7 +95,8 @@ class BookResource extends Resource
                                 ->label('فایل‌های صوتی اصلی (کل کتاب)')
                                 ->multiple()
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/audio'),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/audio')
+                                ->preserveFilenames(),
 
                             TextInput::make('audio_version')
                                 ->label('نسخه صوت‌های اصلی')
@@ -106,7 +111,8 @@ class BookResource extends Resource
                                 ->multiple()
                                 ->image()
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/images'),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/images')
+                                ->preserveFilenames(),
 
                             TextInput::make('images_version')
                                 ->label('نسخه تصاویر اصلی')
