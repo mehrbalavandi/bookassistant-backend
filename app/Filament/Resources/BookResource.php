@@ -44,61 +44,72 @@ class BookResource extends Resource
 
                 Section::make('مدیریت فایل‌ها و نسخه‌گذاری (Granulation)')
                     ->schema([
-                        // ۱. بخش فایل نمونه
+                        // بخش فایل نمونه PDF یا زیپ کلی و نسخه آن
                         Grid::make(3)->schema([
                             FileUpload::make('sample_file_path')
-                                ->label('فایل نمونه (دمو)')
+                                ->label('فایل دمو کلی (PDF یا Zip)')
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name'))
-                                ->columnSpan(2),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples'),
+
                             TextInput::make('sample_version')
-                                ->label('نسخه نمونه')
+                                ->label('نسخه اجزای نمونه')
                                 ->numeric()
                                 ->default(1)
                                 ->required(),
                         ]),
 
-                        // ۲. بخش فایل ساختار محتوا
-                        Grid::make(3)->schema([
-                            FileUpload::make('json_file')
-                                ->label('فایل ساختار JSON')
-                                ->disk('local')
-                                ->acceptedFileTypes(['application/json'])
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name'))
-                                ->columnSpan(2),
-                            TextInput::make('json_version')
-                                ->label('نسخه JSON')
-                                ->numeric()
-                                ->default(1)
-                                ->required(),
-                        ]),
-
-                        // ۳. بخش فایل‌های صوتی
-                        Grid::make(3)->schema([
-                            FileUpload::make('audio_files')
-                                ->label('فایل‌های صوتی کتاب')
+                        // 🆕 جدید: بخش آپلود فایل‌های صوتی نمونه (مثلاً فقط فصل اول)
+                        Grid::make(1)->schema([
+                            FileUpload::make('sample_audio_files')
+                                ->label('فایل‌های صوتی نمونه (فصل اول)')
                                 ->multiple()
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/audio')
-                                ->columnSpan(2),
-                            TextInput::make('audio_version')
-                                ->label('نسخه صوت‌ها')
-                                ->numeric()
-                                ->default(1)
-                                ->required(),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/audio'),
                         ]),
 
-                        // ۴. بخش تصاویر
-                        Grid::make(3)->schema([
-                            FileUpload::make('images')
-                                ->label('تصاویر کتاب')
+                        // 🆕 جدید: بخش آپلود تصاویر نمونه (مثلاً تصاویر فصل اول)
+                        Grid::make(1)->schema([
+                            FileUpload::make('sample_images')
+                                ->label('تصاویر نمونه (فصل اول)')
                                 ->multiple()
                                 ->image()
                                 ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/images')
-                                ->columnSpan(2),
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/images'),
+                        ]),
+
+                        // بخش فایل‌های اصلی و پولی (بدون تغییر نسبت به قبل)
+                        Grid::make(1)->schema([
+                            FileUpload::make('json_file')
+                                ->label('فایل ساختار JSON اصلی')
+                                ->disk('local')
+                                ->acceptedFileTypes(['application/json'])
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name')),
+                        ]),
+
+                        Grid::make(2)->schema([
+                            FileUpload::make('audio_files')
+                                ->label('فایل‌های صوتی اصلی (کل کتاب)')
+                                ->multiple()
+                                ->disk('local')
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/audio'),
+
+                            TextInput::make('audio_version')
+                                ->label('نسخه صوت‌های اصلی')
+                                ->numeric()
+                                ->default(1)
+                                ->required(),
+                        ]),
+
+                        Grid::make(2)->schema([
+                            FileUpload::make('images')
+                                ->label('تصاویر اصلی (کل کتاب)')
+                                ->multiple()
+                                ->image()
+                                ->disk('local')
+                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/images'),
+
                             TextInput::make('images_version')
-                                ->label('نسخه تصاویر')
+                                ->label('نسخه تصاویر اصلی')
                                 ->numeric()
                                 ->default(1)
                                 ->required(),

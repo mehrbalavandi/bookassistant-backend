@@ -13,13 +13,20 @@ class BookController extends Controller
     // ۱. ویترین عمومی: برگرداندن لیست تمام کتاب‌ها
     public function index(Request $request)
     {
-        // اضافه کردن فیلدهای نسخه به ساختار واکشی دیتابیس
         $books = Book::select([
-            'id', 'title', 'folder_name', 
-            'sample_file_path', 'sample_version',
-            'json_file', 'json_version',
-            'audio_files', 'audio_version',
-            'images', 'images_version'
+            'id',
+            'title',
+            'folder_name',
+            'sample_file_path',
+            'sample_audio_files',
+            'sample_images',
+            'sample_version',
+            'json_file',
+            'json_version',
+            'audio_files',
+            'audio_version',
+            'images',
+            'images_version'
         ])->get();
 
         $purchasedBookIds = [];
@@ -34,9 +41,9 @@ class BookController extends Controller
 
         $books->transform(function ($book) use ($purchasedBookIds) {
             $book->is_purchased = in_array($book->id, $purchasedBookIds);
-            
-            // یک اقدام هوشمندانه: اگر کاربر کتاب را نخریده باشد، مسیر فایل‌های اصلی را 
-            // در پاسخ API مخفی می‌کنیم تا امنیت فایل‌ها بالاتر برود.
+
+            // قفل امنیتی سخت‌گیرانه:
+            // اگر کاربر هزینه کتاب را پرداخت نکرده باشد، مسیر فایل‌های اصلی کاملاً null و خالی ارسال می‌شود.
             if (!$book->is_purchased) {
                 $book->json_file = null;
                 $book->audio_files = [];
@@ -65,7 +72,7 @@ class BookController extends Controller
         }
 
         return Storage::download($samplePath);
-    }  
+    }
 
     public function myBooks(Request $request)
     {
@@ -79,8 +86,8 @@ class BookController extends Controller
             'success' => true,
             'data' => $books
         ], 200);
-    } 
-    
+    }
+
     public function download(Request $request, Book $book)
     {
         $user = $request->user();
@@ -99,7 +106,7 @@ class BookController extends Controller
         // ۲. پیدا کردن مسیر فایل در سرور
         // فرض می‌کنیم در جدول books فیلدی به نام file_path دارید که آدرس فایل دانلودی در آن ذخیره شده است.
         // مثال: 'books/ielts_vocab_package.zip'
-        $filePath = $book->file_path; 
+        $filePath = $book->file_path;
 
         // بررسی اینکه آیا فایل واقعاً در سرور وجود دارد یا نه
         if (!$filePath || !Storage::exists($filePath)) {
@@ -112,5 +119,5 @@ class BookController extends Controller
         // ۳. ارسال مستقیم فایل برای دانلود به سمت فلاتر
         // این دستور، فایل را به صورت Stream به کلاینت می‌فرستد و آدرس واقعی فایل در سرور را مخفی نگه می‌دارد.
         return Storage::download($filePath);
-    }    
+    }
 }
