@@ -8,23 +8,28 @@ class Book extends Model
 {
     use HasFactory;
 
-    // ۱. اضافه شدن فیلد نسخه نمونه به آرایه Fillable
     protected $fillable = [
         'title',
         'folder_name',
         'json_file',
+        'json_version',       // <---
         'audio_files',
+        'audio_version',      // <---
         'images',
-        'sample_file_path', 
+        'images_version',     // <---
+        'sample_file_path',
+        'sample_version',     // <---
     ];
 
-    // ۲. تبدیل نوع (Casting) بسیار مهم برای Filament
     protected $casts = [
         'audio_files' => 'array',
         'images' => 'array',
+        'json_version' => 'integer',
+        'audio_version' => 'integer',
+        'images_version' => 'integer',
+        'sample_version' => 'integer',
     ];
 
-    // ۳. رابطه با جدول کاربران (خریدهای دائمی) که قبلاً اضافه کردیم
     public function purchasers()
     {
         return $this->belongsToMany(User::class, 'book_user')->withTimestamps();

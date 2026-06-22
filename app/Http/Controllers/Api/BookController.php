@@ -13,31 +13,39 @@ class BookController extends Controller
     // ۱. ویترین عمومی: برگرداندن لیست تمام کتاب‌ها
     public function index(Request $request)
     {
-        // گرفتن تمام کتاب‌ها از دیتابیس
-        $books = Book::all();
+        // اضافه کردن فیلدهای نسخه به ساختار واکشی دیتابیس
+        $books = Book::select([
+            'id', 'title', 'folder_name', 
+            'sample_file_path', 'sample_version',
+            'json_file', 'json_version',
+            'audio_files', 'audio_version',
+            'images', 'images_version'
+        ])->get();
 
         $purchasedBookIds = [];
 
-        // ۲. بررسی هوشمند: آیا درخواستی که از فلاتر آمده، حامل توکن است؟
         if ($request->bearerToken()) {
-            // تلاش برای شناسایی کاربر از روی توکن
+            /** @var \App\Models\User $user */
             $user = auth('sanctum')->user();
-            
             if ($user) {
-                // استخراج آیدی کتاب‌هایی که این کاربر یک‌بار برای همیشه خریده است
-                // (فرض بر این است که رابطه purchasedBooks در مدل User تعریف شده است)
                 $purchasedBookIds = $user->purchasedBooks()->pluck('books.id')->toArray();
             }
         }
 
-        // ۳. اضافه کردن کلید is_purchased به تک‌تک کتاب‌ها
         $books->transform(function ($book) use ($purchasedBookIds) {
-            // اگر آیدی کتاب در لیست خریدهای کاربر بود، مقدار true وگرنه false می‌گیرد
             $book->is_purchased = in_array($book->id, $purchasedBookIds);
+            
+            // یک اقدام هوشمندانه: اگر کاربر کتاب را نخریده باشد، مسیر فایل‌های اصلی را 
+            // در پاسخ API مخفی می‌کنیم تا امنیت فایل‌ها بالاتر برود.
+            if (!$book->is_purchased) {
+                $book->json_file = null;
+                $book->audio_files = [];
+                $book->images = [];
+            }
+
             return $book;
         });
 
-        // ۴. ارسال پاسخ نهایی به فلاتر
         return response()->json([
             'success' => true,
             'data' => $books
