@@ -22,10 +22,10 @@ Route::post('/login', [WebAuthController::class, 'login']);
 // مسیر خروج
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout');
 
-// این مسیرها فقط برای کاربرانی که لاگین کرده‌اند قابل دسترس است
 Route::middleware('auth')->group(function () {
-    Route::post('/payment/checkout', [App\Http\Controllers\WebController::class, 'checkout'])->name('payment.checkout');
-    Route::get('/payment/verify', [App\Http\Controllers\WebController::class, 'verifyPayment'])->name('payment.verify');
+    // پاس دادن آیدی کتاب در URL
+    Route::get('/checkout/{book}', [WebController::class, 'checkout'])->name('checkout');
+    Route::get('/payment/verify', [WebController::class, 'verifyPayment'])->name('payment.verify');
 });
 
 Route::post('/logout', [WebController::class, 'logout'])->name('web.logout');

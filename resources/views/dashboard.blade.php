@@ -3,95 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>داشبورد کاربری | دستیار کتاب</title>
-    <link href="https://cdn.jsdelivr.net/npm/vazirmatn@3.3.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
-    
+    <title>داشبورد کاربری</title>
     <style>
-        body { 
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-            font-family: Vazirmatn, Tahoma, sans-serif; 
-            min-height: 100vh;
-        }
-        .main-card { 
-            border-radius: 20px; 
-            border: none; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-        }
-        .avatar-circle {
-            width: 70px;
-            height: 70px;
-            background: #4f46e5;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            margin: 0 auto 15px;
-            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
-        }
-        .premium-badge {
-            background-color: #ffe6e6;
-            color: #ff4d4d;
-            border: 1px solid #ffcccc;
-            border-radius: 12px;
-            padding: 15px;
-        }
+        body { font-family: Tahoma, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 30px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .btn { padding: 8px 16px; border-radius: 5px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; }
+        .btn-primary { background-color: #4f46e5; color: white; border: none; cursor: pointer; width: 100%; box-sizing: border-box; text-align: center;}
+        .btn-success { background-color: #10b981; color: white; width: 100%; text-align: center; box-sizing: border-box;}
+        .btn-danger { background-color: #ef4444; color: white; }
+        .container { max-width: 1200px; margin: 40px auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e5e7eb; }
+        .price { font-size: 16px; color: #059669; font-weight: bold; margin: 15px 0; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 8px; font-weight: bold; }
+        .alert-success { background-color: #d1fae5; color: #065f46; }
+        .alert-danger { background-color: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-3 mb-5">
-        <div class="container">
-            <a class="navbar-brand fw-bold text-info" href="#">📚 دستیار هوشمند کتاب</a>
-            
-            <form action="{{ route('web.logout') }}" method="POST" class="d-inline">
+    <div class="header">
+        <h2>👋 خوش آمدید، {{ Auth::user()->name }} عزیز</h2>
+        <div>
+            <form action="{{ url('/logout') }}" method="POST" style="display: inline;">
                 @csrf
-                <button type="submit" class="btn btn-outline-danger btn-sm px-3 rounded-pill d-flex align-items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-right" viewBox="0 0 16 16">
-                        <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5 .5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"/>
-                        <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"/>
-                    </svg>
-                    خروج از حساب
-                </button>
+                <button type="submit" class="btn btn-danger">خروج از حساب</button>
             </form>
         </div>
-    </nav>
+    </div>
 
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-7">
-                <div class="card main-card p-5 text-center">
+        
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+        @endif
+
+        <h2 style="margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">فروشگاه کتاب‌های شما</h2>
+        <p style="color: #6b7280; margin-bottom: 30px;">📌 کتاب‌های خریداری شده به صورت خودکار در اپلیکیشن موبایل شما نیز آزاد و قابل دانلود خواهند بود.</p>
+
+        <div class="grid">
+            @foreach($books as $book)
+                <div class="card">
+                    <h3>{{ $book->title }}</h3>
                     
-                    <div class="avatar-circle">
-                        {{ mb_substr(Auth::user()->name, 0, 1) }}
+                    <div class="price">
+                        @if($book->price == 0)
+                            <span style="color: blue;">رایگان</span>
+                        @elseif($book->discount > 0)
+                            <span style="text-decoration: line-through; color: #9ca3af; font-size: 14px;">
+                                {{ number_format($book->price) }}
+                            </span>
+                            <span style="background-color: #ef4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px;">
+                                {{ $book->discount }}%
+                            </span>
+                            <br>
+                            {{ number_format($book->final_price) }} تومان
+                        @else
+                            {{ number_format($book->price) }} تومان
+                        @endif
                     </div>
 
-                    <h3 class="fw-bold text-dark mb-1">{{ Auth::user()->name }}</h3>
-                    <p class="text-muted small mb-4">{{ Auth::user()->email }}</p>
-                    
-                    <hr class="my-4 text-secondary opacity-25">
-
-                    <div class="text-start">
-                        <h5 class="fw-bold mb-3 text-secondary">وضعیت اشتراک اپلیکیشن فلاتر:</h5>
-                        <div class="premium-badge d-flex align-items-center gap-3">
-                            <span style="font-size: 24px;">⚠️</span>
-                            <div>
-                                <strong class="d-block mb-1">حساب شما رایگان (محدود) است</strong>
-                                <span class="small opacity-75">برای دسترسی به بانک کامل لغات آیلتس، پادکست‌ها و ترجمه‌های فارسی/عربی، لطفاً اشتراک خود را از داخل اپلیکیشن فعال کنید.</span>
-                            </div>
+                    @if($book->is_purchased)
+                        <div class="btn btn-success">
+                            ✓ خریداری شده (فعال در اپ)
                         </div>
-                    </div>
-
-                    <div class="mt-4 pt-2">
-                        <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill small">ℹ️ این پنل صرفاً جهت مدیریت حساب وب شماست.</span>
-                    </div>
-
+                    @else
+                        <a href="{{ route('checkout', $book->id) }}" class="btn btn-primary">
+                            پرداخت و فعال‌سازی
+                        </a>
+                    @endif
                 </div>
-            </div>
+            @endforeach
         </div>
     </div>
 

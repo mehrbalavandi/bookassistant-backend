@@ -39,6 +39,22 @@ class BookResource extends Resource
                                 ->helperText('مثال: ielts-book-1')
                                 ->required()
                                 ->live(),
+                            // 🌟 اضافه شدن فیلد قیمت
+                            TextInput::make('price')
+                                ->label('قیمت اصلی (تومان)')
+                                ->numeric()
+                                ->required()
+                                ->default(0)
+                                ->helperText('اگر رایگان است، 0 وارد کنید'),
+
+                            // 🌟 اضافه شدن فیلد درصد تخفیف
+                            TextInput::make('discount')
+                                ->label('درصد تخفیف')
+                                ->numeric()
+                                ->default(0)
+                                ->minValue(0)
+                                ->maxValue(100)
+                                ->helperText('عددی بین 0 تا 100'),
                         ]),
                     ]),
 

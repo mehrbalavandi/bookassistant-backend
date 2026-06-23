@@ -22,6 +22,8 @@ class Book extends Model
         'sample_version',
         'sample_audio_files', // <--- جدید
         'sample_images',      // <--- جدید
+        'price',     // 🌟 اضافه شد
+        'discount',  // 🌟 اضافه شد
     ];
 
     protected $casts = [
@@ -38,5 +40,19 @@ class Book extends Model
     public function purchasers()
     {
         return $this->belongsToMany(User::class, 'book_user')->withTimestamps();
+    }
+
+    /**
+     * 🌟 اکسسور هوشمند برای محاسبه قیمت نهایی پس از کسر تخفیف
+     */
+    public function getFinalPriceAttribute()
+    {
+        if ($this->discount > 0) {
+            // محاسبه مبلغ تخفیف و کسر آن از قیمت اصلی
+            $discountAmount = ($this->price * $this->discount) / 100;
+            return $this->price - $discountAmount;
+        }
+
+        return $this->price;
     }
 }
