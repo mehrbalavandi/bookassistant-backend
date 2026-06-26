@@ -104,6 +104,12 @@ class BookResource extends Resource
                                 ->acceptedFileTypes(['application/json'])
                                 ->directory(fn(Get $get) => 'books/' . $get('folder_name'))
                                 ->preserveFilenames(),
+
+                            TextInput::make('json_version')
+                                ->label('نسخه فایل JSON اصلی')
+                                ->numeric()
+                                ->default(1)
+                                ->required(),
                         ]),
 
                         Grid::make(2)->schema([
