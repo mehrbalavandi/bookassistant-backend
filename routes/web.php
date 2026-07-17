@@ -27,25 +27,25 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout/{book}', [WebController::class, 'checkout'])->name('checkout');
     Route::get('/payment/verify', [WebController::class, 'verifyPayment'])->name('payment.verify');
 });
-Route::middleware(['auth', 'can:admin'])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
+// Route::middleware(['auth', 'can:admin'])
+//     ->prefix('admin')
+//     ->name('admin.')
+//     ->group(function () {
 
-        Route::get('/books', [AdminBookController::class, 'index'])
-            ->name('books.index');
+//         Route::get('/books', [AdminBookController::class, 'index'])
+//             ->name('books.index');
 
-        Route::get('/books/{book}/manage', [AdminBookController::class, 'manage'])
-            ->name('books.manage');
+//         Route::get('/books/{book}/manage', [AdminBookController::class, 'manage'])
+//             ->name('books.manage');
 
-        Route::post('/books/{book}/upload', [AdminBookController::class, 'upload'])
-            ->name('books.upload');
+//         Route::post('/books/{book}/upload', [AdminBookController::class, 'upload'])
+//             ->name('books.upload');
 
-        Route::delete(
-            '/books/{book}/{scope}/{kind}',
-            [AdminBookController::class, 'destroyGroup']
-        )
-            ->name('books.destroyGroup');
-    });
+//         Route::delete(
+//             '/books/{book}/{scope}/{kind}',
+//             [AdminBookController::class, 'destroyGroup']
+//         )
+//             ->name('books.destroyGroup');
+//     });
 
 Route::post('/logout', [WebController::class, 'logout'])->name('web.logout');
