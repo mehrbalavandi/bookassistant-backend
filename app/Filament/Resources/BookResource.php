@@ -95,6 +95,7 @@ class BookResource extends Resource
                 Tables\Columns\TextColumn::make('title')->label('عنوان کتاب')->searchable(),
                 Tables\Columns\TextColumn::make('folder_name')->label('نام پوشه'),
                 Tables\Columns\TextColumn::make('json_version')->label('نسخه دیتا'),
+                Tables\Columns\TextColumn::make('images_version')->label('نسخه تصاویر'),
                 Tables\Columns\TextColumn::make('audio_version')->label('نسخه صوت'),
                 Tables\Columns\TextColumn::make('created_at')->label('تاریخ ثبت')->dateTime('Y-m-d'),
             ])

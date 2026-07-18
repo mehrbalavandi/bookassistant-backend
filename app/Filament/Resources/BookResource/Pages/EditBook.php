@@ -75,9 +75,24 @@ class EditBook extends EditRecord
                 $zip->close();
                 Storage::disk('local')->delete($zipRel);
 
-                // ثبتِ مسیرِ index.json + بامپِ نسخه‌ها (پرچمِ «محتوا عوض شد» برای اپ)
-                $col = $scope === 'sample' ? 'sample_file_path' : 'json_file';
-                $this->record->update([$col => $this->scopeRoot($scope) . '/index.json']);
+                // 🌟 لیستِ فایل‌های صوت/تصویرِ استخراج‌شده را در DB ثبت کن — بدون این،
+                // اپ فهرستِ خالی می‌بیند و هیچ صوت/تصویری دانلود نمی‌کند (بدون هیچ خطایی)
+                $audioDir  = $this->scopeRoot($scope) . '/audio';
+                $imagesDir = $this->scopeRoot($scope) . '/images';
+                $audioFiles = Storage::disk('local')->exists($audioDir)
+                    ? Storage::disk('local')->files($audioDir) : [];
+                $imageFiles = Storage::disk('local')->exists($imagesDir)
+                    ? Storage::disk('local')->files($imagesDir) : [];
+
+                // ثبتِ مسیرِ index.json + فهرستِ صوت/تصویر + بامپِ نسخه‌ها (پرچمِ «محتوا عوض شد»)
+                $col       = $scope === 'sample' ? 'sample_file_path'   : 'json_file';
+                $audioCol  = $scope === 'sample' ? 'sample_audio_files' : 'audio_files';
+                $imagesCol = $scope === 'sample' ? 'sample_images'      : 'images';
+                $this->record->update([
+                    $col       => $this->scopeRoot($scope) . '/index.json',
+                    $audioCol  => $audioFiles,
+                    $imagesCol => $imageFiles,
+                ]);
 
                 if ($scope === 'sample') {
                     $this->record->increment('sample_version');
@@ -106,6 +121,12 @@ class EditBook extends EditRecord
                     Storage::disk('local')->delete($this->scopeRoot($scope) . '/index.json');
                     $col = $scope === 'sample' ? 'sample_file_path' : 'json_file';
                     $this->record->update([$col => null]);
+                } elseif ($kind === 'audio') {
+                    $col = $scope === 'sample' ? 'sample_audio_files' : 'audio_files';
+                    $this->record->update([$col => []]);
+                } elseif ($kind === 'images') {
+                    $col = $scope === 'sample' ? 'sample_images' : 'images';
+                    $this->record->update([$col => []]);
                 }
 
                 $verCol = $scope === 'sample'
