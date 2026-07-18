@@ -8,13 +8,11 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-
-// ابزارهای فرم فلامنت
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Get;
+use Filament\Forms\Components\Placeholder;
+use Illuminate\Support\Facades\Storage;
 
 class BookResource extends Resource
 {
@@ -25,125 +23,69 @@ class BookResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Section::make('اطلاعات پایه کتاب')
-                    ->schema([
-                        Grid::make(2)->schema([
-                            TextInput::make('title')
-                                ->label('عنوان کتاب (مثلاً IELTS Cambridge 1)')
-                                ->required(),
+        return $form->schema([
+            Section::make('اطلاعات پایه کتاب')->schema([
+                Grid::make(2)->schema([
+                    TextInput::make('title')
+                        ->label('عنوان کتاب')->required(),
 
-                            TextInput::make('folder_name')
-                                ->label('نام پوشه در سرور (فقط انگلیسی)')
-                                ->helperText('مثال: ielts-book-1')
-                                ->required()
-                                ->live(),
-                            // 🌟 اضافه شدن فیلد قیمت
-                            TextInput::make('price')
-                                ->label('قیمت اصلی (تومان)')
-                                ->numeric()
-                                ->required()
-                                ->default(0)
-                                ->helperText('اگر رایگان است، 0 وارد کنید'),
+                    TextInput::make('folder_name')
+                        ->label('نام پوشه در سرور (فقط انگلیسی)')
+                        ->helperText('مثال: ielts-book-1')
+                        ->required()->live(),
 
-                            // 🌟 اضافه شدن فیلد درصد تخفیف
-                            TextInput::make('discount')
-                                ->label('درصد تخفیف')
-                                ->numeric()
-                                ->default(0)
-                                ->minValue(0)
-                                ->maxValue(100)
-                                ->helperText('عددی بین 0 تا 100'),
-                        ]),
+                    TextInput::make('price')
+                        ->label('قیمت (تومان)')->numeric()->required()->default(0)
+                        ->helperText('اگر رایگان است، 0'),
+
+                    TextInput::make('discount')
+                        ->label('درصد تخفیف')->numeric()->default(0)
+                        ->minValue(0)->maxValue(100),
+                ]),
+            ]),
+
+            Section::make('نسخه‌ها')
+                ->description('این اعداد پرچمِ «محتوا عوض شد» برای اپ هستند و هنگام آپلود/حذفِ گروهی خودکار بالا می‌روند.')
+                ->schema([
+                    Grid::make(4)->schema([
+                        TextInput::make('json_version')->label('نسخهٔ دیتای اصلی')->numeric()->default(1),
+                        TextInput::make('audio_version')->label('نسخهٔ صوت اصلی')->numeric()->default(1),
+                        TextInput::make('images_version')->label('نسخهٔ تصاویر اصلی')->numeric()->default(1),
+                        TextInput::make('sample_version')->label('نسخهٔ نمونه')->numeric()->default(1),
                     ]),
+                ]),
 
-                Section::make('مدیریت فایل‌ها و نسخه‌گذاری (Granulation)')
-                    ->schema([
-                        // بخش فایل نمونه PDF یا زیپ کلی و نسخه آن
-                        Grid::make(3)->schema([
-                            FileUpload::make('sample_file_path')
-                                ->label('فایل دمو کلی (PDF یا Zip)')
-                                ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples')
-                                ->preserveFilenames(),
+            // وضعیتِ محتوا؛ آپلود/حذف از دکمه‌های بالای صفحهٔ ویرایش انجام می‌شود
+            Section::make('وضعیت محتوا')
+                ->visibleOn('edit')
+                ->description('برای آپلود یا حذفِ گروهیِ محتوا، از دکمه‌های «آپلود محتوا» و «حذف گروهی» در بالای همین صفحه استفاده کنید.')
+                ->schema([
+                    Placeholder::make('main_status')
+                        ->label('🔵 محتوای اصلی (کامل)')
+                        ->content(fn($record) => static::statusText($record, 'main')),
 
-                            TextInput::make('sample_version')
-                                ->label('نسخه اجزای نمونه')
-                                ->numeric()
-                                ->default(1)
-                                ->required(),
-                        ]),
+                    Placeholder::make('sample_status')
+                        ->label('🟠 محتوای نمونه (دمو رایگان)')
+                        ->content(fn($record) => static::statusText($record, 'sample')),
+                ]),
+        ]);
+    }
 
-                        // 🆕 جدید: بخش آپلود فایل‌های صوتی نمونه (مثلاً فقط فصل اول)
-                        Grid::make(1)->schema([
-                            FileUpload::make('sample_audio_files')
-                                ->label('فایل‌های صوتی نمونه (فصل اول)')
-                                ->multiple()
-                                ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/audio')
-                                ->preserveFilenames(),
-                        ]),
+    protected static function statusText($record, string $scope): string
+    {
+        if (! $record) {
+            return '—';
+        }
+        $root = $scope === 'sample'
+            ? "books/{$record->folder_name}/sample"
+            : "books/{$record->folder_name}";
 
-                        // 🆕 جدید: بخش آپلود تصاویر نمونه (مثلاً تصاویر فصل اول)
-                        Grid::make(1)->schema([
-                            FileUpload::make('sample_images')
-                                ->label('تصاویر نمونه (فصل اول)')
-                                ->multiple()
-                                ->image()
-                                ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/samples/images')
-                                ->preserveFilenames(),
-                        ]),
+        $pages  = count(Storage::disk('local')->files("$root/pages"));
+        $audio  = count(Storage::disk('local')->files("$root/audio"));
+        $images = count(Storage::disk('local')->files("$root/images"));
+        $idx    = Storage::disk('local')->exists("$root/index.json") ? '✓ موجود' : '— ندارد';
 
-                        // بخش فایل‌های اصلی و پولی (بدون تغییر نسبت به قبل)
-                        Grid::make(1)->schema([
-                            FileUpload::make('json_file')
-                                ->label('فایل ساختار JSON اصلی')
-                                ->disk('local')
-                                ->acceptedFileTypes(['application/json'])
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name'))
-                                ->preserveFilenames(),
-
-                            TextInput::make('json_version')
-                                ->label('نسخه فایل JSON اصلی')
-                                ->numeric()
-                                ->default(1)
-                                ->required(),
-                        ]),
-
-                        Grid::make(2)->schema([
-                            FileUpload::make('audio_files')
-                                ->label('فایل‌های صوتی اصلی (کل کتاب)')
-                                ->multiple()
-                                ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/audio')
-                                ->preserveFilenames(),
-
-                            TextInput::make('audio_version')
-                                ->label('نسخه صوت‌های اصلی')
-                                ->numeric()
-                                ->default(1)
-                                ->required(),
-                        ]),
-
-                        Grid::make(2)->schema([
-                            FileUpload::make('images')
-                                ->label('تصاویر اصلی (کل کتاب)')
-                                ->multiple()
-                                ->image()
-                                ->disk('local')
-                                ->directory(fn(Get $get) => 'books/' . $get('folder_name') . '/images')
-                                ->preserveFilenames(),
-
-                            TextInput::make('images_version')
-                                ->label('نسخه تصاویر اصلی')
-                                ->numeric()
-                                ->default(1)
-                                ->required(),
-                        ]),
-                    ]),
-            ]);
+        return "index.json: {$idx}  |  صفحات: {$pages}  |  صوت: {$audio}  |  تصویر: {$images}";
     }
 
     public static function table(Table $table): Table
@@ -174,9 +116,9 @@ class BookResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBooks::route('/'),
+            'index'  => Pages\ListBooks::route('/'),
             'create' => Pages\CreateBook::route('/create'),
-            'edit' => Pages\EditBook::route('/{record}/edit'),
+            'edit'   => Pages\EditBook::route('/{record}/edit'),
         ];
     }
 }
