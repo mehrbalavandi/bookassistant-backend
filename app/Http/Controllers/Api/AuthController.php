@@ -6,17 +6,32 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * قانونِ رمز عبور — با مقدارِ env('PASSWORD_MODE') قابلِ تنظیم:
+     *   PASSWORD_MODE=lax    → حداقل ۱ کاراکتر (برای تست)
+     *   PASSWORD_MODE=strong → حداقل ۸ کاراکتر + حروف بزرگ و کوچک + عدد + نماد (پیش‌فرض)
+     */
+    private function passwordRule(): Password
+    {
+        if (env('PASSWORD_MODE', 'strong') === 'lax') {
+            return Password::min(1);
+        }
+
+        return Password::min(8)->mixedCase()->numbers()->symbols();
+    }
+
     // ۱. متد ثبت‌نام کاربر جدید از طریق اپلیکیشن فلاتر
     public function register(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users|max:255',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', $this->passwordRule()],
         ]);
 
         $user = User::create([

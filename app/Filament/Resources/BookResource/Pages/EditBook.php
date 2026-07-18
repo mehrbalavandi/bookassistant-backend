@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BookResource\Pages;
 
 use App\Filament\Resources\BookResource;
 use Filament\Actions;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -32,8 +33,76 @@ class EditBook extends EditRecord
                 $this->deleteGroupAction('sample', 'images', 'حذف همه تصاویرِ نمونه'),
             ])->label('حذف گروهی')->icon('heroicon-o-trash')->color('danger')->button(),
 
+            // ── مدیریتِ تکیِ فایل‌های صوت/تصویر (مشاهده + حذفِ فایل‌های انتخابی) ──
+            Actions\ActionGroup::make([
+                $this->manageAssetsAction('main',   'audio',  'صوت‌های اصلی'),
+                $this->manageAssetsAction('main',   'images', 'تصاویرِ اصلی'),
+                $this->manageAssetsAction('sample', 'audio',  'صوت‌های نمونه'),
+                $this->manageAssetsAction('sample', 'images', 'تصاویرِ نمونه'),
+            ])->label('مدیریت فایل‌ها')->icon('heroicon-o-folder-open')->button(),
+
             Actions\DeleteAction::make(),
         ];
+    }
+
+    /**
+     * فهرستِ فایل‌های یک نوع را به‌صورت چک‌باکس نشان می‌دهد (مشاهده) و اجازه‌ی
+     * حذفِ فایل‌های انتخاب‌شده را می‌دهد (حذفِ تکی/چندتایی). «ویرایش» = حذف + آپلودِ مجدد.
+     */
+    private function manageAssetsAction(string $scope, string $kind, string $label): Actions\Action
+    {
+        return Actions\Action::make("manage_{$scope}_{$kind}")
+            ->label($label)
+            ->modalHeading("مدیریت $label")
+            ->modalSubmitActionLabel('حذفِ انتخاب‌شده‌ها')
+            ->form([
+                CheckboxList::make('files')
+                    ->label('برای حذف، فایل‌ها را انتخاب کنید')
+                    ->options(function () use ($scope, $kind) {
+                        $dir = $this->dir($scope, $kind);
+                        $files = Storage::disk('local')->exists($dir)
+                            ? Storage::disk('local')->files($dir)
+                            : [];
+                        // کلید = مسیرِ کامل، نمایش = فقط نامِ فایل
+                        return collect($files)
+                            ->mapWithKeys(fn($p) => [$p => basename($p)])
+                            ->all();
+                    })
+                    ->bulkToggleable()
+                    ->noSearchResultsMessage('فایلی موجود نیست.'),
+            ])
+            ->action(function (array $data) use ($scope, $kind, $label) {
+                $selected = $data['files'] ?? [];
+                if (empty($selected)) {
+                    return;
+                }
+                Storage::disk('local')->delete($selected);
+
+                // از آرایه‌ی متناظر در DB هم حذف کن
+                $col = match ([$scope, $kind]) {
+                    ['main', 'audio']    => 'audio_files',
+                    ['main', 'images']   => 'images',
+                    ['sample', 'audio']  => 'sample_audio_files',
+                    ['sample', 'images'] => 'sample_images',
+                };
+                $remaining = array_values(array_diff($this->record->{$col} ?? [], $selected));
+                $this->record->update([$col => $remaining]);
+
+                // بامپِ نسخه
+                $verCol = $scope === 'sample'
+                    ? 'sample_version'
+                    : ($kind === 'audio' ? 'audio_version' : 'images_version');
+                $this->record->increment($verCol);
+
+                Notification::make()
+                    ->title(count($selected) . " فایل از «$label» حذف شد.")
+                    ->success()->send();
+            });
+    }
+
+    private function dir(string $scope, string $kind): string
+    {
+        return $this->scopeRoot($scope) . '/' . $kind;
     }
 
     private function scopeRoot(string $scope): string
