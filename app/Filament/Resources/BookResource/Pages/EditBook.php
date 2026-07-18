@@ -35,69 +35,22 @@ class EditBook extends EditRecord
 
             // ── مدیریتِ تکیِ فایل‌های صوت/تصویر (مشاهده + حذفِ فایل‌های انتخابی) ──
             Actions\ActionGroup::make([
-                $this->manageAssetsAction('main',   'audio',  'صوت‌های اصلی'),
-                $this->manageAssetsAction('main',   'images', 'تصاویرِ اصلی'),
-                $this->manageAssetsAction('sample', 'audio',  'صوت‌های نمونه'),
-                $this->manageAssetsAction('sample', 'images', 'تصاویرِ نمونه'),
+                $this->manageAssetsAction('main',   'audio'),
+                $this->manageAssetsAction('main',   'images'),
+                $this->manageAssetsAction('sample', 'audio'),
+                $this->manageAssetsAction('sample', 'images'),
             ])->label('مدیریت فایل‌ها')->icon('heroicon-o-folder-open')->button(),
 
             Actions\DeleteAction::make(),
         ];
     }
 
-    /**
-     * فهرستِ فایل‌های یک نوع را به‌صورت چک‌باکس نشان می‌دهد (مشاهده) و اجازه‌ی
-     * حذفِ فایل‌های انتخاب‌شده را می‌دهد (حذفِ تکی/چندتایی). «ویرایش» = حذف + آپلودِ مجدد.
-     */
-    private function manageAssetsAction(string $scope, string $kind, string $label): Actions\Action
+    // ───────────────────────── helpers ─────────────────────────
+
+    private function scopeRoot(string $scope): string
     {
-        return Actions\Action::make("manage_{$scope}_{$kind}")
-            ->label($label)
-            ->modalHeading("مدیریت $label")
-            ->modalSubmitActionLabel('حذفِ انتخاب‌شده‌ها')
-            ->form([
-                CheckboxList::make('files')
-                    ->label('برای حذف، فایل‌ها را انتخاب کنید')
-                    ->options(function () use ($scope, $kind) {
-                        $dir = $this->dir($scope, $kind);
-                        $files = Storage::disk('local')->exists($dir)
-                            ? Storage::disk('local')->files($dir)
-                            : [];
-                        // کلید = مسیرِ کامل، نمایش = فقط نامِ فایل
-                        return collect($files)
-                            ->mapWithKeys(fn($p) => [$p => basename($p)])
-                            ->all();
-                    })
-                    ->bulkToggleable()
-                    ->noSearchResultsMessage('فایلی موجود نیست.'),
-            ])
-            ->action(function (array $data) use ($scope, $kind, $label) {
-                $selected = $data['files'] ?? [];
-                if (empty($selected)) {
-                    return;
-                }
-                Storage::disk('local')->delete($selected);
-
-                // از آرایه‌ی متناظر در DB هم حذف کن
-                $col = match ([$scope, $kind]) {
-                    ['main', 'audio']    => 'audio_files',
-                    ['main', 'images']   => 'images',
-                    ['sample', 'audio']  => 'sample_audio_files',
-                    ['sample', 'images'] => 'sample_images',
-                };
-                $remaining = array_values(array_diff($this->record->{$col} ?? [], $selected));
-                $this->record->update([$col => $remaining]);
-
-                // بامپِ نسخه
-                $verCol = $scope === 'sample'
-                    ? 'sample_version'
-                    : ($kind === 'audio' ? 'audio_version' : 'images_version');
-                $this->record->increment($verCol);
-
-                Notification::make()
-                    ->title(count($selected) . " فایل از «$label» حذف شد.")
-                    ->success()->send();
-            });
+        $folder = $this->record->folder_name;
+        return $scope === 'sample' ? "books/{$folder}/sample" : "books/{$folder}";
     }
 
     private function dir(string $scope, string $kind): string
@@ -105,11 +58,44 @@ class EditBook extends EditRecord
         return $this->scopeRoot($scope) . '/' . $kind;
     }
 
-    private function scopeRoot(string $scope): string
+    // برچسبِ فارسیِ یک ترکیبِ scope+kind — یک‌جا تعریف شده تا همه‌جا از همین استفاده شود
+    private function assetLabel(string $scope, string $kind): string
     {
-        $folder = $this->record->folder_name;
-        return $scope === 'sample' ? "books/{$folder}/sample" : "books/{$folder}";
+        $scopeFa = $scope === 'sample' ? 'نمونه' : 'اصلی';
+        $kindFa = match ($kind) {
+            'pages'  => 'صفحات',
+            'audio'  => 'صوت‌ها',
+            'images' => 'تصاویر',
+            default  => $kind,
+        };
+        return "{$kindFa}ِ {$scopeFa}";
     }
+
+    private function columnFor(string $scope, string $kind): string
+    {
+        return match ([$scope, $kind]) {
+            ['main', 'pages']    => 'json_file',
+            ['main', 'audio']    => 'audio_files',
+            ['main', 'images']   => 'images',
+            ['sample', 'pages']  => 'sample_file_path',
+            ['sample', 'audio']  => 'sample_audio_files',
+            ['sample', 'images'] => 'sample_images',
+        };
+    }
+
+    private function versionColumnFor(string $scope, string $kind): string
+    {
+        if ($scope === 'sample') {
+            return 'sample_version';
+        }
+        return match ($kind) {
+            'pages'  => 'json_version',
+            'audio'  => 'audio_version',
+            'images' => 'images_version',
+        };
+    }
+
+    // ───────────────────────── آپلودِ ZIP ─────────────────────────
 
     private function uploadZipAction(string $scope, string $label): Actions\Action
     {
@@ -153,14 +139,10 @@ class EditBook extends EditRecord
                 $imageFiles = Storage::disk('local')->exists($imagesDir)
                     ? Storage::disk('local')->files($imagesDir) : [];
 
-                // ثبتِ مسیرِ index.json + فهرستِ صوت/تصویر + بامپِ نسخه‌ها (پرچمِ «محتوا عوض شد»)
-                $col       = $scope === 'sample' ? 'sample_file_path'   : 'json_file';
-                $audioCol  = $scope === 'sample' ? 'sample_audio_files' : 'audio_files';
-                $imagesCol = $scope === 'sample' ? 'sample_images'      : 'images';
                 $this->record->update([
-                    $col       => $this->scopeRoot($scope) . '/index.json',
-                    $audioCol  => $audioFiles,
-                    $imagesCol => $imageFiles,
+                    $this->columnFor($scope, 'pages')  => $this->scopeRoot($scope) . '/index.json',
+                    $this->columnFor($scope, 'audio')  => $audioFiles,
+                    $this->columnFor($scope, 'images') => $imageFiles,
                 ]);
 
                 if ($scope === 'sample') {
@@ -172,10 +154,12 @@ class EditBook extends EditRecord
                 }
 
                 Notification::make()
-                    ->title("محتوای «" . ($scope === 'sample' ? 'نمونه' : 'اصلی') . "» با موفقیت استخراج شد.")
+                    ->title('محتوای «' . ($scope === 'sample' ? 'نمونه' : 'اصلی') . '» با موفقیت استخراج شد.')
                     ->success()->send();
             });
     }
+
+    // ───────────────────────── حذفِ گروهی ─────────────────────────
 
     private function deleteGroupAction(string $scope, string $kind, string $label): Actions\Action
     {
@@ -183,27 +167,69 @@ class EditBook extends EditRecord
             ->label($label)
             ->color('danger')
             ->requiresConfirmation()
-            ->action(function () use ($scope, $kind, $label) {
-                Storage::disk('local')->deleteDirectory($this->scopeRoot($scope) . '/' . $kind);
+            ->action(function () use ($scope, $kind) {
+                Storage::disk('local')->deleteDirectory($this->dir($scope, $kind));
 
+                $col = $this->columnFor($scope, $kind);
                 if ($kind === 'pages') {
                     Storage::disk('local')->delete($this->scopeRoot($scope) . '/index.json');
-                    $col = $scope === 'sample' ? 'sample_file_path' : 'json_file';
                     $this->record->update([$col => null]);
-                } elseif ($kind === 'audio') {
-                    $col = $scope === 'sample' ? 'sample_audio_files' : 'audio_files';
-                    $this->record->update([$col => []]);
-                } elseif ($kind === 'images') {
-                    $col = $scope === 'sample' ? 'sample_images' : 'images';
+                } else {
                     $this->record->update([$col => []]);
                 }
 
-                $verCol = $scope === 'sample'
-                    ? 'sample_version'
-                    : ['pages' => 'json_version', 'audio' => 'audio_version', 'images' => 'images_version'][$kind];
-                $this->record->increment($verCol);
+                $this->record->increment($this->versionColumnFor($scope, $kind));
 
-                Notification::make()->title("«{$label}» انجام شد.")->success()->send();
+                Notification::make()
+                    ->title('«' . $this->assetLabel($scope, $kind) . '» حذف شد.')
+                    ->success()->send();
+            });
+    }
+
+    // ───────────────────────── مدیریتِ تکیِ فایل‌ها ─────────────────────────
+
+    /**
+     * فهرستِ فایل‌های یک نوع را به‌صورت چک‌باکس نشان می‌دهد (مشاهده) و اجازه‌ی
+     * حذفِ فایل‌های انتخاب‌شده را می‌دهد (حذفِ تکی/چندتایی). «ویرایش» = حذف + آپلودِ مجدد.
+     */
+    private function manageAssetsAction(string $scope, string $kind): Actions\Action
+    {
+        return Actions\Action::make("manage_{$scope}_{$kind}")
+            ->label($this->assetLabel($scope, $kind))
+            ->modalHeading('مدیریت ' . $this->assetLabel($scope, $kind))
+            ->modalSubmitActionLabel('حذفِ انتخاب‌شده‌ها')
+            ->form([
+                CheckboxList::make('files')
+                    ->label('برای حذف، فایل‌ها را انتخاب کنید')
+                    ->options(function () use ($scope, $kind) {
+                        $dir = $this->dir($scope, $kind);
+                        $files = Storage::disk('local')->exists($dir)
+                            ? Storage::disk('local')->files($dir)
+                            : [];
+                        // کلید = مسیرِ کامل، نمایش = فقط نامِ فایل
+                        return collect($files)
+                            ->mapWithKeys(fn($p) => [$p => basename($p)])
+                            ->all();
+                    })
+                    ->bulkToggleable()
+                    ->noSearchResultsMessage('فایلی موجود نیست.'),
+            ])
+            ->action(function (array $data) use ($scope, $kind) {
+                $selected = $data['files'] ?? [];
+                if (empty($selected)) {
+                    return;
+                }
+                Storage::disk('local')->delete($selected);
+
+                $col = $this->columnFor($scope, $kind);
+                $remaining = array_values(array_diff($this->record->{$col} ?? [], $selected));
+                $this->record->update([$col => $remaining]);
+
+                $this->record->increment($this->versionColumnFor($scope, $kind));
+
+                Notification::make()
+                    ->title(count($selected) . ' فایل از «' . $this->assetLabel($scope, $kind) . '» حذف شد.')
+                    ->success()->send();
             });
     }
 }
