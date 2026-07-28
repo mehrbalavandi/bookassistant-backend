@@ -83,9 +83,14 @@ class BookResource extends Resource
         $pages  = count(Storage::disk('local')->files("$root/pages"));
         $audio  = count(Storage::disk('local')->files("$root/audio"));
         $images = count(Storage::disk('local')->files("$root/images"));
+        // 🐞 اسکریپت‌های صوتی (متنِ هم‌زمان‌شده با هر فایلِ صوتی) حالا در
+        // یک پوشه‌ی جداگانه از pages/ نوشته می‌شوند — تا شمارشِ «صفحات»
+        // بالا با فایل‌های اسکریپتِ صوتی قاطی نشود. این ردیف فقط برای
+        // کاملیِ نمایش اضافه شده؛ نبودش هیچ عملکردی را خراب نمی‌کند.
+        $audioScripts = count(Storage::disk('local')->files("$root/audio_scripts"));
         $idx    = Storage::disk('local')->exists("$root/index.json") ? '✓ موجود' : '— ندارد';
 
-        return "index.json: {$idx}  |  صفحات: {$pages}  |  صوت: {$audio}  |  تصویر: {$images}";
+        return "index.json: {$idx}  |  صفحات: {$pages}  |  صوت: {$audio}  |  تصویر: {$images}  |  اسکریپتِ صوتی: {$audioScripts}";
     }
 
     public static function table(Table $table): Table
