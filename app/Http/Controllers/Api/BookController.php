@@ -162,7 +162,9 @@ class BookController extends Controller
     /// نامِ آرشیو شاملِ شماره‌ی نسخه‌هاست — یعنی با هر آپلودِ جدید (که نسخه‌ها
     /// را increment می‌کند) نامِ فایل عوض می‌شود و آرشیوِ تازه ساخته می‌شود؛
     /// نیازی به invalidate کردنِ دستیِ کش نیست.
-    private function zipRelativePath(Book $book, string $scope): string
+    /// 🌟 public/static است تا صفحه‌ی آپلودِ فیلامنت هم بتواند فایلِ ZIPِ
+    /// آپلودشده را دقیقاً با همین نام نگه دارد و این دو جا از هم جدا نیفتند.
+    public static function zipRelativePath(Book $book, string $scope): string
     {
         $name = $scope === 'sample'
             ? "sample_v{$book->sample_version}.zip"
@@ -171,11 +173,28 @@ class BookController extends Controller
         return "books/{$book->folder_name}/archive/{$name}";
     }
 
-    /// اگر آرشیو وجود نداشته باشد می‌سازدش و مسیرِ نسبی‌اش را برمی‌گرداند
-    /// (یا null اگر محتوایی برای بسته‌بندی نباشد).
+    /// آرشیوهای قدیمیِ همین scope را پاک می‌کند (تا فضا هدر نرود).
+    public static function pruneOldZips(Book $book, string $scope, string $keepRel): void
+    {
+        $prefix = $scope === 'sample' ? 'sample_' : 'main_';
+        $dir = "books/{$book->folder_name}/archive";
+        if (!Storage::exists($dir)) {
+            return;
+        }
+        foreach (Storage::files($dir) as $old) {
+            if (str_starts_with(basename($old), $prefix) && $old !== $keepRel) {
+                Storage::delete($old);
+            }
+        }
+    }
+
+    /// آرشیو را برمی‌گرداند: اولویت با همان فایلِ ZIPی است که ادمین آپلود
+    /// کرده و نگه داشته شده (پس هیچ ساختِ دوباره‌ای لازم نیست). فقط برای
+    /// کتاب‌هایی که قبل از این تغییر آپلود شده‌اند و آرشیوِ ذخیره‌شده ندارند،
+    /// یک‌بار از رویِ فایل‌های روی دیسک ساخته می‌شود.
     private function ensureZip(Book $book, string $scope): ?string
     {
-        $zipRel = $this->zipRelativePath($book, $scope);
+        $zipRel = self::zipRelativePath($book, $scope);
 
         if (Storage::exists($zipRel)) {
             return $zipRel;
@@ -196,13 +215,7 @@ class BookController extends Controller
             mkdir($zipDir, 0775, true);
         }
 
-        // آرشیوهای قدیمیِ همین scope را پاک کن تا فضا هدر نرود
-        $prefix = $scope === 'sample' ? 'sample_' : 'main_';
-        foreach (Storage::files("books/{$book->folder_name}/archive") as $old) {
-            if (str_starts_with(basename($old), $prefix) && $old !== $zipRel) {
-                Storage::delete($old);
-            }
-        }
+        self::pruneOldZips($book, $scope, $zipRel);
 
         $zip = new \ZipArchive();
         if ($zip->open($zipAbs, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
@@ -232,14 +245,12 @@ class BookController extends Controller
                 continue;
             }
 
-            // 🌟 نکته‌ی مهم: اپِ فلاتر فایل‌های صوتی/تصویری را کنارِ خودِ
-            // index.json (نه در زیرپوشه) می‌جوید — پس audio/ و images/ را
-            // صاف می‌کنیم، ولی pages/ و audio_scripts/ ساختارشان حفظ می‌شود.
-            $entryName = ($topLevel === 'audio' || $topLevel === 'images')
-                ? basename($relative)
-                : $relative;
-
-            $zip->addFile($item->getPathname(), $entryName);
+            // 🌟 ساختار دقیقاً مثلِ خودِ فایلِ آپلودی حفظ می‌شود (audio/ و
+            // images/ به‌صورتِ زیرپوشه). صاف‌کردنِ آن‌ها — که اپِ فلاتر لازم
+            // دارد — حالا فقط سمتِ فلاتر و موقعِ استخراج انجام می‌شود، تا هر
+            // دو مسیر (آرشیوِ آپلودیِ نگه‌داشته‌شده و این آرشیوِ فال‌بک) دقیقاً
+            // یک شکل باشند و اپ فقط با یک ساختار سروکار داشته باشد.
+            $zip->addFile($item->getPathname(), $relative);
             $added++;
         }
 

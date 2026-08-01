@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\BookResource\Pages;
 
 use App\Filament\Resources\BookResource;
+use App\Http\Controllers\Api\BookController;
 use Filament\Actions;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
@@ -128,7 +129,8 @@ class EditBook extends EditRecord
 
                 $zip->extractTo($targetAbs);
                 $zip->close();
-                Storage::disk('local')->delete($zipRel);
+                // 🌟 فایلِ ZIP عمداً این‌جا پاک نمی‌شود — پایین‌تر به‌عنوانِ
+                // آرشیوِ آماده‌ی دانلود به پوشه‌ی archive منتقل می‌شود.
 
                 // 🌟 لیستِ فایل‌های صوت/تصویرِ استخراج‌شده را در DB ثبت کن — بدون این،
                 // اپ فهرستِ خالی می‌بیند و هیچ صوت/تصویری دانلود نمی‌کند (بدون هیچ خطایی)
@@ -152,6 +154,22 @@ class EditBook extends EditRecord
                     $this->record->increment('audio_version');
                     $this->record->increment('images_version');
                 }
+
+                // 🌟 به‌جای دور انداختنِ فایلِ ZIPِ آپلودشده، همان را به‌عنوانِ
+                // آرشیوِ آماده‌ی دانلود نگه می‌داریم — پس سرور هیچ‌وقت لازم
+                // نیست دوباره از رویِ فایل‌های روی دیسک آرشیو بسازد.
+                // نام دقیقاً همانی است که BookController هنگام دانلود دنبالش
+                // می‌گردد؛ چون بعد از increment اجرا می‌شود، شماره‌نسخه‌های
+                // تازه در نام می‌آیند. refresh لازم است تا مقادیرِ increment‌شده
+                // از دیتابیس خوانده شوند، نه مقادیرِ قدیمیِ داخلِ آبجکت.
+                $this->record->refresh();
+                $archiveRel = BookController::zipRelativePath($this->record, $scope);
+                Storage::disk('local')->makeDirectory(dirname($archiveRel));
+                if (Storage::disk('local')->exists($archiveRel)) {
+                    Storage::disk('local')->delete($archiveRel);
+                }
+                Storage::disk('local')->move($zipRel, $archiveRel);
+                BookController::pruneOldZips($this->record, $scope, $archiveRel);
 
                 Notification::make()
                     ->title('محتوای «' . ($scope === 'sample' ? 'نمونه' : 'اصلی') . '» با موفقیت استخراج شد.')
