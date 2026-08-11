@@ -29,3 +29,10 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::post('/logout', [WebController::class, 'logout'])->name('web.logout');
+
+// 🐞 پیش‌نمایشِ فایل‌های صوتی/تصویریِ کتاب در پنلِ ادمین (پلیر و بندانگشتی).
+// خودِ کنترلر ادمین‌بودن را چک می‌کند؛ auth این‌جا فقط لایه‌ی اول است.
+Route::middleware('auth')
+    ->get('/admin/book-asset/{book}/{scope}/{kind}/{file}', [\App\Http\Controllers\Admin\BookAssetController::class, 'show'])
+    ->where('file', '.*')
+    ->name('admin.book-asset');

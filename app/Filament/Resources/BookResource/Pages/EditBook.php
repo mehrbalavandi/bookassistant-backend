@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\BookController;
 use Filament\Actions;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Storage;
@@ -217,8 +218,21 @@ class EditBook extends EditRecord
             ->modalHeading('مدیریت ' . $this->assetLabel($scope, $kind))
             ->modalSubmitActionLabel('حذفِ انتخاب‌شده‌ها')
             ->form([
+                // 🐞 پیش‌نمایشِ تکی: پلیر کنارِ هر صوت، بندانگشتی کنارِ هر تصویر،
+                // و دکمه‌ی حذفِ مستقل برای هر فایل. (چک‌باکس‌های پایین برای
+                // حذفِ چندتاییِ یک‌جا دست‌نخورده می‌مانند.)
+                ViewField::make("preview_{$scope}_{$kind}")
+                    ->label('پیش‌نمایش و حذفِ تکی')
+                    ->view('filament.book-assets')
+                    ->viewData([
+                        'scope'  => $scope,
+                        'kind'   => $kind,
+                        'bookId' => $this->record->getKey(),
+                        'files'  => $this->assetFileNames($scope, $kind),
+                    ]),
+
                 CheckboxList::make('files')
-                    ->label('برای حذف، فایل‌ها را انتخاب کنید')
+                    ->label('حذفِ گروهی — فایل‌ها را انتخاب کنید')
                     ->options(function () use ($scope, $kind) {
                         $dir = $this->dir($scope, $kind);
                         $files = Storage::disk('local')->exists($dir)
@@ -249,5 +263,57 @@ class EditBook extends EditRecord
                     ->title(count($selected) . ' فایل از «' . $this->assetLabel($scope, $kind) . '» حذف شد.')
                     ->success()->send();
             });
+    }
+
+    /** فقط نامِ فایل‌های یک نوع (برای نمایش در ویوِ پیش‌نمایش). */
+    private function assetFileNames(string $scope, string $kind): array
+    {
+        $dir = $this->dir($scope, $kind);
+        if (! Storage::disk('local')->exists($dir)) {
+            return [];
+        }
+
+        return collect(Storage::disk('local')->files($dir))
+            ->map(fn($p) => basename($p))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * 🐞 حذفِ یک فایلِ تکی از دکمه‌ی کنارِ همان ردیف (wire:click در ویو).
+     * همان کارهای جانبیِ حذفِ گروهی را انجام می‌دهد تا داده‌ها ناسازگار نشوند:
+     * پاک‌کردنِ مسیر از ستونِ مربوطه و افزایشِ نسخه (تا اپ‌ها دلتا بگیرند).
+     */
+    public function deleteAssetFile(string $scope, string $kind, string $file): void
+    {
+        if (! in_array($scope, ['main', 'sample'], true)) {
+            return;
+        }
+        if (! in_array($kind, ['audio', 'images'], true)) {
+            return;
+        }
+
+        $name = basename($file);
+        if ($name !== $file || $name === '') {
+            return;
+        }
+
+        $path = $this->dir($scope, $kind) . '/' . $name;
+        if (! Storage::disk('local')->exists($path)) {
+            return;
+        }
+
+        Storage::disk('local')->delete($path);
+
+        $col = $this->columnFor($scope, $kind);
+        $remaining = array_values(array_diff($this->record->{$col} ?? [], [$path]));
+        $this->record->update([$col => $remaining]);
+
+        $this->record->increment($this->versionColumnFor($scope, $kind));
+        $this->record->refresh();
+
+        Notification::make()
+            ->title('فایل «' . $name . '» حذف شد.')
+            ->success()->send();
     }
 }
