@@ -71,13 +71,27 @@ class AdminPanelProvider extends PanelProvider
                     document.documentElement.setAttribute('lang', 'fa');
                 </script>
                 <style>
+                    /* 🐞 رفعِ ایرادِ گزارش‌شده: در صفحه‌ی کوچک، منویِ کاربر
+                       (که «Sign Out» داخلِ آن است) از topbar باز می‌شود و
+                       زیرِ دکمه‌های شناور می‌افتاد. علتش این بود که
+                       .fi-topbar در فیلامنت z-index: 20 دارد و عناصرِ شناورِ
+                       ما هم ۲۰ داشتند — با z-indexِ برابر، هرکدام که در DOM
+                       بعدتر بیاید رویِ دیگری کشیده می‌شود، و هدرِ صفحه
+                       بعدِ topbar می‌آید. پس topbar (و هرچه داخلش باز
+                       می‌شود) به لایه‌ی بالاتر برده شد و عناصرِ شناور به
+                       لایه‌ی پایین‌تر — که هنوز از محتوای صفحه بالاترند و
+                       کارِ خودشان را می‌کنند. */
+                    .fi-topbar {
+                        z-index: 30;
+                    }
+
                     /* نوارِ عنوانِ صفحه، که دکمه‌های اکشن داخلِ آن است.
                        top برابرِ ارتفاعِ topbarِ فیلامنت (4rem) گرفته شده تا
                        زیرِ آن پنهان نشود. */
                     .fi-main .fi-header {
                         position: sticky;
                         top: 4rem;
-                        z-index: 20;
+                        z-index: 10;
                         background-color: #f9fafb;
                         padding-block: 0.75rem;
                     }
@@ -89,7 +103,7 @@ class AdminPanelProvider extends PanelProvider
                     .fi-main .fi-form-actions {
                         position: sticky;
                         bottom: 0;
-                        z-index: 20;
+                        z-index: 10;
                         background-color: #f9fafb;
                         padding-block: 0.75rem;
                         border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -97,6 +111,12 @@ class AdminPanelProvider extends PanelProvider
                     .dark .fi-main .fi-form-actions {
                         background-color: #030712;
                         border-top-color: rgba(255, 255, 255, 0.08);
+                    }
+
+                    /* هر منویِ بازشونده‌ای (منویِ کاربر، ActionGroupها) باید
+                       بالاتر از نوارهای شناور بماند، هر جایِ صفحه که باشد */
+                    .fi-dropdown-panel {
+                        z-index: 40;
                     }
 
                     /* position:sticky داخلِ ظرفی با overflow مخفی کار نمی‌کند */
