@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>آکادمی زبان و آیلتس</title>
+    <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
     <style>
-        body { font-family: Tahoma, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        body { font-family: var(--font-fa); background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 30px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .btn { padding: 8px 16px; border-radius: 5px; text-decoration: none; font-size: 14px; font-weight: bold; }
         .btn-primary { background-color: #4f46e5; color: white; }

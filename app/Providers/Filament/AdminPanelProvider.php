@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Http\Middleware\AdminAuthenticate;
 use App\Http\Middleware\AdminAuthenticateSession;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
@@ -31,6 +32,11 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            // 🌟 فونتِ فارسیِ پنل. LocalFontProvider یعنی فایلِ CSS از خودِ
+            // سایت خوانده شود (نه Google Fonts)، و فیلامنت خودش متغیرِ
+            // ‎--font-family‎ را روی همین خانواده ست می‌کند — پس کلِ پنل،
+            // شاملِ مودال‌ها و نوتیفیکیشن‌ها، فارسی می‌شود.
+            ->font('Vazirmatn', url: asset('css/persian-font.css'), provider: LocalFontProvider::class)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -53,6 +59,17 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 'panels::head.end',
                 fn(): HtmlString => new HtmlString(<<<'HTML'
+                <!-- 🌟 راست‌به‌چپ کردنِ پنلِ ادمین.
+                     همه‌ی برچسب‌های این پنل فارسی‌اند ولی قالبِ فیلامنت
+                     به‌صورت پیش‌فرض dir="ltr" می‌دهد. این اسکریپت داخلِ
+                     <head> و قبل از رندرِ <body> اجرا می‌شود، پس هیچ
+                     پرشِ چیدمانی دیده نمی‌شود. عمداً به‌جای تغییرِ
+                     app.locale انجام شده تا پیام‌های اعتبارسنجی و بقیه‌ی
+                     رشته‌های لاراول دست‌نخورده بمانند. -->
+                <script>
+                    document.documentElement.setAttribute('dir', 'rtl');
+                    document.documentElement.setAttribute('lang', 'fa');
+                </script>
                 <style>
                     /* نوارِ عنوانِ صفحه، که دکمه‌های اکشن داخلِ آن است.
                        top برابرِ ارتفاعِ topbarِ فیلامنت (4rem) گرفته شده تا
@@ -86,6 +103,32 @@ class AdminPanelProvider extends PanelProvider
                     .fi-main,
                     .fi-main .fi-page {
                         overflow: visible;
+                    }
+
+                    /* ── چند اصلاحِ کوچکِ RTL ──
+                       فیلامنت ۳ عمدتاً از ویژگی‌های منطقیِ CSS (ms-/me-/
+                       start/end) استفاده می‌کند و با dir="rtl" خودش
+                       می‌چرخد؛ این‌ها فقط چند موردِ باقی‌مانده‌اند. */
+
+                    /* شماره‌ها و مسیرهای انگلیسی (نامِ فایل، نسخه، آدرس)
+                       داخلِ متنِ فارسی نباید جابه‌جا دیده شوند */
+                    [dir='rtl'] .fi-input,
+                    [dir='rtl'] input[type='email'],
+                    [dir='rtl'] input[type='url'],
+                    [dir='rtl'] input[type='number'] {
+                        text-align: right;
+                    }
+                    [dir='rtl'] input[type='email'],
+                    [dir='rtl'] input[type='url'],
+                    [dir='rtl'] input[type='number'] {
+                        direction: ltr;
+                        text-align: left;
+                    }
+
+                    /* متنِ کمکیِ زیرِ فیلدها و پیام‌های خطا */
+                    [dir='rtl'] .fi-fo-field-wrp-hint,
+                    [dir='rtl'] .fi-fo-field-wrp-error-message {
+                        text-align: right;
                     }
                 </style>
                 HTML)

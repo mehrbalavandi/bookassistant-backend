@@ -2,34 +2,41 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>درگاه پرداخت آزمایشی</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ثبت نام در آکادمی</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
-    <style>body { font-family: Vazirmatn, sans-serif; }</style>
+    <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
+    <style>body { font-family: var(--font-fa); }</style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<body class="bg-slate-50 flex items-center justify-center min-h-screen">
 
-    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md text-center">
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold text-blue-600 mb-2">درگاه شبیه‌ساز بانک</h2>
-            <p class="text-sm text-gray-500">محیط تست محلی (Localhost)</p>
-        </div>
+    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md">
+        <h2 class="text-2xl font-bold text-center text-slate-900 mb-6">ساخت حساب کاربری</h2>
 
-        <div class="bg-gray-50 p-4 rounded-lg mb-8 text-right space-y-2 text-sm border border-gray-200">
-            <div class="flex justify-between"><span>پرداخت‌کننده:</span> <span class="font-bold">{{ $user->name }}</span></div>
-            <div class="flex justify-between"><span>مبلغ قابل پرداخت:</span> <span class="font-bold text-green-600">{{ $amount }} تومان</span></div>
-            <div class="flex justify-between"><span>شماره پیگیری:</span> <span class="font-bold">{{ $transactionId }}</span></div>
-        </div>
+        <form action="{{ route('register') }}" method="POST" class="space-y-4">
+            @csrf
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">نام و نام خانوادگی</label>
+                <input type="text" name="name" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">ایمیل</label>
+                <input type="email" name="email" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">رمز عبور</label>
+                <input type="password" name="password" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">تکرار رمز عبور</label>
+                <input type="password" name="password_confirmation" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">ثبت نام</button>
+        </form>
 
-        <div class="flex flex-col gap-3">
-            <a href="{{ route('payment.verify', ['status' => 'success']) }}" class="bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition">
-                شبیه‌سازی: پرداخت موفق
-            </a>
-            
-            <a href="{{ route('payment.verify', ['status' => 'failed']) }}" class="bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600 transition">
-                شبیه‌سازی: انصراف از پرداخت
-            </a>
-        </div>
+        <p class="text-center text-sm text-slate-500 mt-6">
+            حساب کاربری دارید؟ <a href="{{ route('login') }}" class="text-blue-600 font-bold">وارد شوید</a>
+        </p>
     </div>
 
 </body>

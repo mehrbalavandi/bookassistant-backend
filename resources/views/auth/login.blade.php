@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود به آکادمی</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
-    <style>body { font-family: Vazirmatn, sans-serif; }</style>
+    <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
+    <style>body { font-family: var(--font-fa); }</style>
 </head>
 <body class="bg-slate-50 flex items-center justify-center min-h-screen">
 

@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ثبت‌نام در سیستم | دستیار کتاب</title>
-    <link href="https://cdn.jsdelivr.net/npm/vazirmatn@3.3.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
     <style>
         body { 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            font-family: Vazirmatn, Tahoma, sans-serif; 
+            font-family: var(--font-fa); 
             min-height: 100vh;
         }
         .register-card {

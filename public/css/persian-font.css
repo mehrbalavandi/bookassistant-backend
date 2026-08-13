@@ -1,0 +1,50 @@
+/* ─────────────────────────────────────────────────────────────
+   فونتِ فارسیِ پروژه — Vazirmatn (مجوز SIL OFL، استفاده‌ی آزاد)
+
+   🌟 چرا محلی و نه CDN: تا این لحظه همه‌ی ویوها فونت را از
+   jsdelivr می‌گرفتند. یعنی اگر کاربر (یا سرور) به آن دامنه دسترسی
+   نداشت، صفحه با فونتِ پیش‌فرضِ سیستم بالا می‌آمد و پنلِ ادمین هم
+   اصلاً فونتِ فارسی نداشت. حالا هر دو (سایت و پنل) از همین یک
+   فایل تغذیه می‌شوند.
+
+   مسیرِ فایل‌های فونت: public/fonts/vazirmatn/
+   (نسبت به همین فایل، یعنی ../fonts/vazirmatn/)
+   ───────────────────────────────────────────────────────────── */
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/vazirmatn/Vazirmatn-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/vazirmatn/Vazirmatn-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/vazirmatn/Vazirmatn-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('../fonts/vazirmatn/Vazirmatn-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* شورتکاتی که ویوها استفاده می‌کنند — فالبک‌ها برای وقتی است که
+   فایل‌های فونت هنوز کپی نشده‌اند (صفحه بی‌ریخت نمی‌شود). */
+:root {
+    --font-fa: 'Vazirmatn', Tahoma, 'Segoe UI', sans-serif;
+}

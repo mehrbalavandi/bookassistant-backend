@@ -17,6 +17,7 @@
 @endphp
 
 <div
+    dir="rtl"
     x-data="{
         sel: [],
         paths: @js($allPaths),
