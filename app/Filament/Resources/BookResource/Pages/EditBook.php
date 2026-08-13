@@ -5,8 +5,8 @@ namespace App\Filament\Resources\BookResource\Pages;
 use App\Filament\Resources\BookResource;
 use App\Http\Controllers\Api\BookController;
 use Filament\Actions;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -16,13 +16,21 @@ class EditBook extends EditRecord
 {
     protected static string $resource = BookResource::class;
 
+    /**
+     * نامِ کلاسِ افزونه‌ی اختیاریِ PECL rar. به‌صورتِ رشته نگه داشته می‌شود چون
+     * این افزونه معمولاً نصب نیست و ارجاعِ مستقیم به آن، در IDE و ابزارهای
+     * تحلیلِ ایستا خطای «Undefined type 'RarArchive'» می‌دهد — بدونِ اینکه
+     * واقعاً باگی در کد باشد (همه‌ی استفاده‌ها پشتِ class_exists هستند).
+     */
+    private const RAR_EXTENSION_CLASS = 'RarArchive';
+
     protected function getHeaderActions(): array
     {
         return [
-            // ── آپلودِ گروهیِ محتوا (خروجیِ اکسترکتور، به‌صورت ZIP) ──
+            // ── آپلودِ گروهیِ محتوا (خروجیِ اکسترکتور، به‌صورت ZIP یا RAR) ──
             Actions\ActionGroup::make([
-                $this->uploadZipAction('main',   'آپلود محتوای اصلی (ZIP)'),
-                $this->uploadZipAction('sample', 'آپلود محتوای نمونه (ZIP)'),
+                $this->uploadArchiveAction('main',   'آپلود محتوای اصلی (ZIP/RAR)'),
+                $this->uploadArchiveAction('sample', 'آپلود محتوای نمونه (ZIP/RAR)'),
             ])->label('آپلود محتوا')->icon('heroicon-o-arrow-up-tray')->button(),
 
             // ── حذفِ گروهی ──
@@ -97,44 +105,115 @@ class EditBook extends EditRecord
         };
     }
 
-    // ───────────────────────── آپلودِ ZIP ─────────────────────────
+    // ───────────────────────── آپلودِ آرشیو (ZIP یا RAR) ─────────────────────────
 
-    private function uploadZipAction(string $scope, string $label): Actions\Action
+    private function uploadArchiveAction(string $scope, string $label): Actions\Action
     {
         return Actions\Action::make("upload_{$scope}")
             ->label($label)
             ->icon('heroicon-o-arrow-up-tray')
             ->color($scope === 'sample' ? 'warning' : 'primary')
+            ->modalWidth('2xl')
+            ->stickyModalHeader()
+            ->stickyModalFooter()
+            ->modalSubmitActionLabel('آپلود و اعمال')
+            ->modalCancelActionLabel('انصراف')
             ->form([
-                FileUpload::make('zip')
-                    ->label('فایل ZIP (شاملِ index.json و پوشه‌های pages/ , audio/ , images/)')
-                    ->acceptedFileTypes(['application/zip', 'application/x-zip-compressed', 'multipart/x-zip'])
+                FileUpload::make('archive')
+                    ->label('فایلِ فشرده (ZIP یا RAR) — شاملِ index.json و پوشه‌های pages/ , audio/ , images/')
+                    // 🐞 نوعِ MIMEی که مرورگرها برای RAR می‌فرستند یکسان نیست
+                    // (vnd.rar، x-rar-compressed، و حتی octet-stream روی بعضی
+                    // ویندوزها). برای همین فهرست را سخاوتمندانه می‌گیریم و
+                    // اعتبارسنجیِ واقعی را سمتِ سرور روی *پسوند* انجام می‌دهیم.
+                    ->acceptedFileTypes([
+                        'application/zip',
+                        'application/x-zip-compressed',
+                        'multipart/x-zip',
+                        'application/vnd.rar',
+                        'application/x-rar-compressed',
+                        'application/x-rar',
+                        'application/octet-stream',
+                    ])
                     ->disk('local')->directory('tmp')->preserveFilenames()
+                    ->required(),
+
+                // 🌟 درخواستِ کاربر: قبل از استخراج پرسیده شود که با محتوای
+                // قبلیِ همین بخش چه‌کار شود. «جایگزینی» یعنی پوشه‌ی محتوای
+                // همین scope کاملاً خالی و بعد آرشیو در آن باز شود؛
+                // «بروزرسانی» یعنی آرشیو روی محتوای موجود باز شود (فایل‌های
+                // هم‌نام بازنویسی می‌شوند و بقیه سرِ جای‌شان می‌مانند).
+                Radio::make('mode')
+                    ->label('با محتوای قبلیِ این بخش چه‌کار شود؟')
+                    ->options([
+                        'replace' => 'حذفِ کاملِ پوشه‌ی قبلی و جایگزینی با این فایل',
+                        'update'  => 'بروزرسانیِ محتویات (فایل‌های هم‌نام بازنویسی، بقیه دست‌نخورده)',
+                    ])
+                    ->descriptions([
+                        'replace' => 'هرچه در این بخش هست پاک می‌شود و فقط محتوای همین فایل باقی می‌ماند.',
+                        'update'  => 'فایل‌های قبلی که در این آرشیو نیستند حذف نمی‌شوند.',
+                    ])
+                    ->default('update')
                     ->required(),
             ])
             ->action(function (array $data) use ($scope) {
-                $zipRel = $data['zip'];
-                $zipAbs = Storage::disk('local')->path($zipRel);
-                $targetAbs = Storage::disk('local')->path($this->scopeRoot($scope));
+                $relPath = $data['archive'];
+                $mode = (($data['mode'] ?? 'update') === 'replace') ? 'replace' : 'update';
+                $absPath = Storage::disk('local')->path($relPath);
+                $ext = strtolower(pathinfo($relPath, PATHINFO_EXTENSION));
 
+                if (! in_array($ext, ['zip', 'rar'], true)) {
+                    Storage::disk('local')->delete($relPath);
+                    Notification::make()
+                        ->title('فقط فایل‌های ZIP یا RAR پذیرفته می‌شوند.')
+                        ->danger()->send();
+                    return;
+                }
+
+                // 🐞 پیش‌بررسی *قبل از* هر تخریبی: اگر فایل خراب باشد یا
+                // (برای RAR) روی سرور هیچ ابزارِ بازکردنی نباشد، در حالتِ
+                // «جایگزینی» محتوای قبلی پاک شده بود و بعد استخراج شکست
+                // می‌خورد — یعنی کتاب بدونِ محتوا می‌ماند. پس اول امکانِ
+                // استخراج را می‌سنجیم و تنها بعد از آن دست به پوشه می‌زنیم.
+                $precheck = $this->probeArchive($absPath, $ext);
+                if ($precheck !== null) {
+                    Storage::disk('local')->delete($relPath);
+                    Notification::make()
+                        ->title('این فایل قابلِ استخراج نیست — هیچ تغییری اعمال نشد.')
+                        ->body($precheck)
+                        ->danger()->persistent()->send();
+                    return;
+                }
+
+                // 🌟 حالتِ «جایگزینی»: قبل از استخراج، محتوای فعلیِ همین scope
+                // پاک می‌شود. (پوشه‌ی sample و پوشه‌ی archive عمداً حفظ
+                // می‌شوند — اولی محتوای scopeِ دیگر است و دومی آرشیوهای
+                // دانلود که پایین‌تر خودشان مدیریت می‌شوند.)
+                if ($mode === 'replace') {
+                    $this->wipeScopeContent($scope);
+                }
+
+                $targetAbs = Storage::disk('local')->path($this->scopeRoot($scope));
                 if (! is_dir($targetAbs)) {
                     mkdir($targetAbs, 0775, true);
                 }
 
-                $zip = new \ZipArchive();
-                if ($zip->open($zipAbs) !== true) {
-                    Storage::disk('local')->delete($zipRel);
-                    Notification::make()->title('باز کردنِ فایل ZIP ناموفق بود.')->danger()->send();
+                $error = $ext === 'zip'
+                    ? $this->extractZip($absPath, $targetAbs)
+                    : $this->extractRar($absPath, $targetAbs);
+
+                if ($error !== null) {
+                    Storage::disk('local')->delete($relPath);
+                    Notification::make()
+                        ->title('استخراجِ فایل ناموفق بود.')
+                        ->body($error)
+                        ->danger()->persistent()->send();
                     return;
                 }
 
-                $zip->extractTo($targetAbs);
-                $zip->close();
-                // 🌟 فایلِ ZIP عمداً این‌جا پاک نمی‌شود — پایین‌تر به‌عنوانِ
-                // آرشیوِ آماده‌ی دانلود به پوشه‌ی archive منتقل می‌شود.
-
-                // 🌟 لیستِ فایل‌های صوت/تصویرِ استخراج‌شده را در DB ثبت کن — بدون این،
-                // اپ فهرستِ خالی می‌بیند و هیچ صوت/تصویری دانلود نمی‌کند (بدون هیچ خطایی)
+                // 🌟 لیستِ فایل‌های صوت/تصویرِ روی دیسک را در DB ثبت کن — بدون این،
+                // اپ فهرستِ خالی می‌بیند و هیچ صوت/تصویری دانلود نمی‌کند (بدون هیچ خطایی).
+                // چون بعد از استخراج، *کلِ* پوشه دوباره اسکن می‌شود، هر دو حالتِ
+                // replace و update خودبه‌خود فهرستِ درست را می‌دهند.
                 $audioDir  = $this->scopeRoot($scope) . '/audio';
                 $imagesDir = $this->scopeRoot($scope) . '/images';
                 $audioFiles = Storage::disk('local')->exists($audioDir)
@@ -156,26 +235,198 @@ class EditBook extends EditRecord
                     $this->record->increment('images_version');
                 }
 
-                // 🌟 به‌جای دور انداختنِ فایلِ ZIPِ آپلودشده، همان را به‌عنوانِ
-                // آرشیوِ آماده‌ی دانلود نگه می‌داریم — پس سرور هیچ‌وقت لازم
-                // نیست دوباره از رویِ فایل‌های روی دیسک آرشیو بسازد.
-                // نام دقیقاً همانی است که BookController هنگام دانلود دنبالش
-                // می‌گردد؛ چون بعد از increment اجرا می‌شود، شماره‌نسخه‌های
-                // تازه در نام می‌آیند. refresh لازم است تا مقادیرِ increment‌شده
-                // از دیتابیس خوانده شوند، نه مقادیرِ قدیمیِ داخلِ آبجکت.
+                // نام آرشیو شاملِ شماره‌نسخه‌هاست، پس باید بعد از increment و
+                // refresh ساخته شود تا با چیزی که BookController موقعِ دانلود
+                // دنبالش می‌گردد یکی باشد.
                 $this->record->refresh();
                 $archiveRel = BookController::zipRelativePath($this->record, $scope);
                 Storage::disk('local')->makeDirectory(dirname($archiveRel));
                 if (Storage::disk('local')->exists($archiveRel)) {
                     Storage::disk('local')->delete($archiveRel);
                 }
-                Storage::disk('local')->move($zipRel, $archiveRel);
-                BookController::pruneOldZips($this->record, $scope, $archiveRel);
+
+                // 🐞 دو نکته‌ی مهم درباره‌ی آرشیوِ دانلود:
+                // ۱) اپِ فلاتر فقط ZIP را باز می‌کند (کتابخانه‌ی archive اصلاً
+                //    RAR را پشتیبانی نمی‌کند). پس آرشیوِ دانلود *همیشه* ZIP
+                //    می‌ماند و اگر ادمین RAR آپلود کرده باشد، سرور از رویِ
+                //    محتوایِ استخراج‌شده یک ZIP می‌سازد. با این کار هیچ تغییری
+                //    سمتِ فلاتر لازم نیست.
+                // ۲) در حالتِ «بروزرسانی»، محتوایِ رویِ دیسک = قدیم + جدید است،
+                //    ولی خودِ فایلِ آپلودی فقط بخشِ جدید را دارد. اگر همان را
+                //    آرشیو کنیم، کاربرِ اپ نسخه‌ی ناقص می‌گیرد. پس فقط در حالتِ
+                //    «جایگزینی» و وقتی آپلود ZIP بوده، همان فایل نگه داشته
+                //    می‌شود؛ در بقیه‌ی حالت‌ها آرشیو از رویِ دیسک ساخته می‌شود.
+                if ($ext === 'zip' && $mode === 'replace') {
+                    Storage::disk('local')->move($relPath, $archiveRel);
+                    BookController::pruneOldZips($this->record, $scope, $archiveRel);
+                } else {
+                    Storage::disk('local')->delete($relPath);
+                    BookController::ensureZip($this->record, $scope);
+                }
 
                 Notification::make()
-                    ->title('محتوای «' . ($scope === 'sample' ? 'نمونه' : 'اصلی') . '» با موفقیت استخراج شد.')
+                    ->title(
+                        'محتوای «' . ($scope === 'sample' ? 'نمونه' : 'اصلی') . '» '
+                            . ($mode === 'replace' ? 'جایگزین' : 'بروزرسانی') . ' شد.'
+                    )
                     ->success()->send();
             });
+    }
+
+    /**
+     * محتوای یک scope را خالی می‌کند (برای حالتِ «جایگزینی»).
+     * پوشه‌ی sample (که محتوای scopeِ دیگر است) و پوشه‌ی archive (آرشیوهای
+     * دانلود) عمداً دست‌نخورده می‌مانند.
+     */
+    private function wipeScopeContent(string $scope): void
+    {
+        $disk = Storage::disk('local');
+        $root = $this->scopeRoot($scope);
+
+        if (! $disk->exists($root)) {
+            return;
+        }
+
+        $keep = $scope === 'sample' ? [] : ['sample', 'archive'];
+
+        foreach ($disk->directories($root) as $directory) {
+            if (in_array(basename($directory), $keep, true)) {
+                continue;
+            }
+            $disk->deleteDirectory($directory);
+        }
+
+        foreach ($disk->files($root) as $file) {
+            $disk->delete($file);
+        }
+    }
+
+    /**
+     * سنجشِ اینکه آیا این آرشیو اصلاً قابلِ بازکردن هست یا نه — بدونِ اینکه
+     * چیزی روی دیسک تغییر کند. در صورتِ سالم‌بودن null، وگرنه پیامِ خطا.
+     */
+    private function probeArchive(string $archiveAbs, string $ext): ?string
+    {
+        if ($ext === 'zip') {
+            $zip = new \ZipArchive();
+            if ($zip->open($archiveAbs) !== true) {
+                return 'باز کردنِ فایل ZIP ممکن نشد (فایل ناقص یا خراب است).';
+            }
+            $zip->close();
+            return null;
+        }
+
+        if (class_exists(self::RAR_EXTENSION_CLASS)) {
+            return null;
+        }
+        if (function_exists('exec') && ! empty($this->rarTools())) {
+            return null;
+        }
+
+        return 'برای بازکردنِ RAR روی سرور یکی از اینها لازم است: افزونه‌ی PHPِ rar، یا ابزارِ unrar، یا 7-Zip. '
+            . 'ساده‌ترین راه روی لینوکس: apt install unrar (یا p7zip-full). '
+            . 'تا آن زمان می‌توانید همان محتوا را به‌صورت ZIP آپلود کنید.';
+    }
+
+    /** استخراجِ ZIP — در صورتِ موفقیت null، وگرنه پیامِ خطا برمی‌گرداند. */
+    private function extractZip(string $archiveAbs, string $targetAbs): ?string
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($archiveAbs) !== true) {
+            return 'باز کردنِ فایل ZIP ممکن نشد (فایل ناقص یا خراب است).';
+        }
+
+        $ok = $zip->extractTo($targetAbs);
+        $zip->close();
+
+        return $ok ? null : 'استخراجِ فایل ZIP ناموفق بود (احتمالاً دسترسیِ نوشتن نیست).';
+    }
+
+    /**
+     * استخراجِ RAR. برخلافِ ZIP، خودِ PHP هیچ پشتیبانیِ داخلی‌ای از RAR ندارد،
+     * پس به‌ترتیب اینها امتحان می‌شوند:
+     *   ۱) افزونه‌ی PECLِ rar (اگر روی سرور نصب باشد)
+     *   ۲) ابزارِ خط‌فرمانِ unrar یا 7z/7za (روی ویندوز مسیرهای متداولِ
+     *      7-Zip و WinRAR هم چک می‌شوند)
+     * اگر هیچ‌کدام نبود، پیامِ راهنما برگردانده می‌شود.
+     */
+    private function extractRar(string $archiveAbs, string $targetAbs): ?string
+    {
+        if (class_exists(self::RAR_EXTENSION_CLASS)) {
+            // 🐞 عمداً با نامِ *رشته‌ای* صدا زده می‌شود، نه \RarArchive::open()
+            // مستقیم: افزونه‌ی rar روی اکثرِ نصب‌های PHP وجود ندارد، پس هم
+            // IDE خطای «Undefined type» می‌داد و هم استاتیک‌آنالایزرها. این
+            // شکل، تشخیصِ زمانِ اجرا را حفظ می‌کند و آن هشدارها را می‌بَرد.
+            $rarClass = self::RAR_EXTENSION_CLASS;
+            $rar = $rarClass::open($archiveAbs);
+            if ($rar !== false) {
+                foreach (($rar->getEntries() ?: []) as $entry) {
+                    $entry->extract($targetAbs);
+                }
+                $rar->close();
+                return null;
+            }
+        }
+
+        if (! function_exists('exec')) {
+            return 'روی این سرور نه افزونه‌ی rar نصب است و نه اجرای دستورِ سیستمی (exec) مجاز است. '
+                . 'یا افزونه‌ی PHPِ rar را نصب کنید یا فایل را به‌صورت ZIP آپلود کنید.';
+        }
+
+        $targetDir = rtrim(str_replace('\\', '/', $targetAbs), '/') . '/';
+        $lastOutput = '';
+
+        foreach ($this->rarTools() as [$binary, $style]) {
+            $command = $style === 'unrar'
+                ? sprintf('%s x -o+ -y %s %s', escapeshellarg($binary), escapeshellarg($archiveAbs), escapeshellarg($targetDir))
+                : sprintf('%s x -y -o%s %s', escapeshellarg($binary), escapeshellarg($targetDir), escapeshellarg($archiveAbs));
+
+            $output = [];
+            $code = 1;
+            @exec($command . ' 2>&1', $output, $code);
+
+            if ($code === 0) {
+                return null;
+            }
+            $lastOutput = trim(implode(' ', array_slice($output, -3)));
+        }
+
+        return 'برای بازکردنِ RAR روی سرور یکی از اینها لازم است: افزونه‌ی PHPِ rar، یا ابزارِ unrar، یا 7-Zip. '
+            . 'ساده‌ترین راه روی لینوکس: apt install unrar (یا p7zip-full). '
+            . ($lastOutput !== '' ? 'آخرین خروجی: ' . $lastOutput : 'هیچ ابزارِ مناسبی پیدا نشد.');
+    }
+
+    /** فهرستِ ابزارهای قابلِ‌استفاده برای RAR، به‌صورت [مسیر/نامِ اجرایی, سبکِ آرگومان]. */
+    private function rarTools(): array
+    {
+        $isWindows = PHP_OS_FAMILY === 'Windows';
+        $probe = $isWindows ? 'where ' : 'command -v ';
+
+        $tools = [];
+        foreach ([['unrar', 'unrar'], ['7z', '7z'], ['7za', '7z']] as [$binary, $style]) {
+            $output = [];
+            $code = 1;
+            @exec($probe . escapeshellarg($binary) . ' 2>&1', $output, $code);
+            if ($code === 0 && ! empty($output)) {
+                $tools[] = [$binary, $style];
+            }
+        }
+
+        if ($isWindows) {
+            $absolute = [
+                ['C:\\Program Files\\7-Zip\\7z.exe', '7z'],
+                ['C:\\Program Files (x86)\\7-Zip\\7z.exe', '7z'],
+                ['C:\\Program Files\\WinRAR\\UnRAR.exe', 'unrar'],
+                ['C:\\Program Files\\WinRAR\\Rar.exe', 'unrar'],
+            ];
+            foreach ($absolute as [$path, $style]) {
+                if (is_file($path)) {
+                    $tools[] = [$path, $style];
+                }
+            }
+        }
+
+        return $tools;
     }
 
     // ───────────────────────── حذفِ گروهی ─────────────────────────
@@ -208,47 +459,42 @@ class EditBook extends EditRecord
     // ───────────────────────── مدیریتِ تکیِ فایل‌ها ─────────────────────────
 
     /**
-     * فهرستِ فایل‌های یک نوع را به‌صورت چک‌باکس نشان می‌دهد (مشاهده) و اجازه‌ی
-     * حذفِ فایل‌های انتخاب‌شده را می‌دهد (حذفِ تکی/چندتایی). «ویرایش» = حذف + آپلودِ مجدد.
+     * فهرستِ فایل‌های یک نوع را نشان می‌دهد: هر ردیف شاملِ چک‌باکسِ انتخاب،
+     * پلیر (صوت) یا بندانگشتی (تصویر)، نام، و دکمه‌ی حذفِ همان ردیف.
+     * 🐞 اصلاحِ درخواستیِ کاربر: چک‌باکس‌ها دیگر یک CheckboxListِ جدا در پایینِ
+     * لیست نیستند؛ داخلِ *همان* ردیفِ پلیر/تصویر قرار گرفته‌اند. «انتخابِ همه»
+     * بالای لیست و دکمه‌های «حذفِ انتخاب‌شده‌ها/انصراف» پایینِ مودال شناور
+     * می‌مانند تا در لیست‌های بلند هم در دسترس باشند.
      */
     private function manageAssetsAction(string $scope, string $kind): Actions\Action
     {
         return Actions\Action::make("manage_{$scope}_{$kind}")
             ->label($this->assetLabel($scope, $kind))
             ->modalHeading('مدیریت ' . $this->assetLabel($scope, $kind))
+            ->modalWidth('2xl')
+            ->stickyModalHeader()
+            ->stickyModalFooter()
             ->modalSubmitActionLabel('حذفِ انتخاب‌شده‌ها')
+            ->modalCancelActionLabel('انصراف')
             ->form([
-                // 🐞 پیش‌نمایشِ تکی: پلیر کنارِ هر صوت، بندانگشتی کنارِ هر تصویر،
-                // و دکمه‌ی حذفِ مستقل برای هر فایل. (چک‌باکس‌های پایین برای
-                // حذفِ چندتاییِ یک‌جا دست‌نخورده می‌مانند.)
-                ViewField::make("preview_{$scope}_{$kind}")
-                    ->label('پیش‌نمایش و حذفِ تکی')
+                // نامِ فیلد عمداً «files» مانده تا اکشنِ زیر بدونِ تغییر همان
+                // آرایه‌ی مسیرها را بگیرد؛ فقط ظاهرِ انتخاب از CheckboxList به
+                // چک‌باکسِ داخلِ ردیف منتقل شده است.
+                ViewField::make('files')
+                    ->hiddenLabel()
+                    ->default([])
                     ->view('filament.book-assets')
                     ->viewData([
                         'scope'  => $scope,
                         'kind'   => $kind,
                         'bookId' => $this->record->getKey(),
-                        'files'  => $this->assetFileNames($scope, $kind),
+                        'assets' => $this->assetRows($scope, $kind),
                     ]),
-
-                CheckboxList::make('files')
-                    ->label('حذفِ گروهی — فایل‌ها را انتخاب کنید')
-                    ->options(function () use ($scope, $kind) {
-                        $dir = $this->dir($scope, $kind);
-                        $files = Storage::disk('local')->exists($dir)
-                            ? Storage::disk('local')->files($dir)
-                            : [];
-                        // کلید = مسیرِ کامل، نمایش = فقط نامِ فایل
-                        return collect($files)
-                            ->mapWithKeys(fn($p) => [$p => basename($p)])
-                            ->all();
-                    })
-                    ->bulkToggleable()
-                    ->noSearchResultsMessage('فایلی موجود نیست.'),
             ])
             ->action(function (array $data) use ($scope, $kind) {
                 $selected = $data['files'] ?? [];
                 if (empty($selected)) {
+                    Notification::make()->title('هیچ فایلی انتخاب نشده بود.')->warning()->send();
                     return;
                 }
                 Storage::disk('local')->delete($selected);
@@ -265,8 +511,11 @@ class EditBook extends EditRecord
             });
     }
 
-    /** فقط نامِ فایل‌های یک نوع (برای نمایش در ویوِ پیش‌نمایش). */
-    private function assetFileNames(string $scope, string $kind): array
+    /**
+     * ردیف‌های لیستِ مدیریتِ فایل: نامِ فایل (برای نمایش و پیش‌نمایش) و مسیرِ
+     * کاملِ آن (مقدارِ چک‌باکس — همان چیزی که اکشنِ حذف انتظار دارد).
+     */
+    private function assetRows(string $scope, string $kind): array
     {
         $dir = $this->dir($scope, $kind);
         if (! Storage::disk('local')->exists($dir)) {
@@ -274,7 +523,7 @@ class EditBook extends EditRecord
         }
 
         return collect(Storage::disk('local')->files($dir))
-            ->map(fn($p) => basename($p))
+            ->map(fn($path) => ['name' => basename($path), 'path' => $path])
             ->values()
             ->all();
     }

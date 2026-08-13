@@ -192,7 +192,11 @@ class BookController extends Controller
     /// کرده و نگه داشته شده (پس هیچ ساختِ دوباره‌ای لازم نیست). فقط برای
     /// کتاب‌هایی که قبل از این تغییر آپلود شده‌اند و آرشیوِ ذخیره‌شده ندارند،
     /// یک‌بار از رویِ فایل‌های روی دیسک ساخته می‌شود.
-    private function ensureZip(Book $book, string $scope): ?string
+    /// 🌟 public/static شد تا صفحه‌ی آپلودِ فیلامنت هم بتواند بعد از استخراجِ
+    /// یک فایلِ RAR (یا آپلودِ حالتِ «بروزرسانی») همین‌جا آرشیوِ ZIPِ دانلود را
+    /// بسازد — یعنی ساختِ آرشیو فقط یک پیاده‌سازی دارد و دو مسیر از هم جدا
+    /// نمی‌افتند.
+    public static function ensureZip(Book $book, string $scope): ?string
     {
         $zipRel = self::zipRelativePath($book, $scope);
 
@@ -275,7 +279,7 @@ class BookController extends Controller
             return $denied;
         }
 
-        $zipRel = $this->ensureZip($book, $scope);
+        $zipRel = self::ensureZip($book, $scope);
         if (!$zipRel) {
             return response()->json(['message' => 'محتوایی برای دانلود موجود نیست.'], 404);
         }
@@ -297,7 +301,7 @@ class BookController extends Controller
             return $denied;
         }
 
-        $zipRel = $this->ensureZip($book, $scope);
+        $zipRel = self::ensureZip($book, $scope);
         if (!$zipRel) {
             return response()->json(['message' => 'محتوایی برای دانلود موجود نیست.'], 404);
         }

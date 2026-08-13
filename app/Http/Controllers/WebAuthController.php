@@ -10,12 +10,14 @@ use Illuminate\Support\Facades\Hash;
 class WebAuthController extends Controller
 {
     // ۱. نمایش صفحه ثبت‌نام
-    public function showRegister() {
+    public function showRegister()
+    {
         return view('auth.register');
     }
 
     // ۲. پردازش اطلاعات ثبت‌نام
-    public function register(Request $request) {
+    public function register(Request $request)
+    {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -35,12 +37,14 @@ class WebAuthController extends Controller
     }
 
     // ۳. نمایش صفحه ورود
-    public function showLogin() {
+    public function showLogin()
+    {
         return view('auth.login');
     }
 
     // ۴. پردازش اطلاعات ورود
-    public function login(Request $request) {
+    public function login(Request $request)
+    {
         $credentials = $request->validate([
             'email' => 'required|string|email',
             'password' => 'required|string',
@@ -48,7 +52,13 @@ class WebAuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->route('home');
+
+            // 🌟 درخواستِ کاربر: اگر جلسه در یک صفحه‌ی خاص منقضی شده بود، بعد
+            // از ورودِ مجدد به همان صفحه برگردیم. لاراول موقعِ ریدایرکتِ
+            // کاربرِ مهمان (redirect()->guest در هندلرِ استثناها) آدرسِ آن
+            // صفحه را در session('url.intended') گذاشته؛ intended همان را
+            // برمی‌دارد و اگر چیزی نبود به صفحه‌ی اصلی می‌رود.
+            return redirect()->intended(route('home'));
         }
 
         return back()->withErrors([
@@ -57,7 +67,8 @@ class WebAuthController extends Controller
     }
 
     // ۵. خروج از حساب کاربری
-    public function logout(Request $request) {
+    public function logout(Request $request)
+    {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
