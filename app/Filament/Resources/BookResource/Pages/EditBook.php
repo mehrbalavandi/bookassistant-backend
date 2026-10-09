@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BookResource\Pages;
 
 use App\Filament\Resources\BookResource;
 use App\Http\Controllers\Api\BookController;
+use App\Support\UploadLimits;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -135,6 +136,14 @@ class EditBook extends EditRecord
                         'application/octet-stream',
                     ])
                     ->disk('local')->directory('tmp')->preserveFilenames()
+                    // 🐞 فایل‌های بزرگ‌تر از ۱۲ مگابایت روی «Uploading 100%» گیر
+                    // می‌کردند: سقفِ پیش‌فرضِ آپلودِ موقتِ Livewire ۱۲MB است و
+                    // ردشدنِ فایل هیچ پیامی نشان نمی‌داد. سقف در
+                    // config/livewire.php بالا برده شد، و این‌جا سقفِ *واقعی*
+                    // (کمینه‌ی Livewire و php.ini) به FilePond داده می‌شود تا
+                    // فایلِ بزرگ‌تر از توانِ سرور قبل از ارسال، با پیام، رد شود.
+                    ->maxSize(UploadLimits::effectiveMaxKb())
+                    ->helperText(UploadLimits::helperText())
                     ->required(),
 
                 // 🌟 درخواستِ کاربر: قبل از استخراج پرسیده شود که با محتوای
@@ -156,6 +165,12 @@ class EditBook extends EditRecord
                     ->required(),
             ])
             ->action(function (array $data) use ($scope) {
+                // 🐞 استخراج و ساختِ دوباره‌ی ZIPِ دانلود برای آرشیوهای بزرگ
+                // ممکن است از max_execution_time (پیش‌فرض ۳۰ ثانیه) بیشتر شود و
+                // کار نیمه‌کاره بماند — مخصوصاً در حالتِ «جایگزینی» که محتوای
+                // قبلی پاک شده است. پس برای این درخواست سقفِ زمان برداشته می‌شود.
+                @set_time_limit(0);
+
                 $relPath = $data['archive'];
                 $mode = (($data['mode'] ?? 'update') === 'replace') ? 'replace' : 'update';
                 $absPath = Storage::disk('local')->path($relPath);
