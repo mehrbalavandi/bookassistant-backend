@@ -25,6 +25,8 @@
         .header { flex-wrap: wrap; gap: 12px; }
         .header h2 { margin: 0; font-size: clamp(17px, 4.6vw, 24px); line-height: 1.6; }
         .header .btn { white-space: nowrap; }
+        .header > div { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .header > div > a { margin: 0 !important; }
         @media (max-width: 600px) {
             body { padding: 12px; }
             .header { padding: 14px 16px; }
@@ -44,6 +46,7 @@
     <div class="header">
         <h2>📚 آکادمی آموزش زبان و آیلتس</h2>
         <div>
+            <a href="{{ route('app.page') }}" class="btn btn-success">📱 دریافتِ اپ</a>
             <a href="{{ url('/register') }}" class="btn btn-secondary" style="margin-left: 10px;">ثبت نام</a>
             <a href="{{ url('/login') }}" class="btn btn-primary">ورود به حساب</a>
         </div>

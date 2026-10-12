@@ -50,8 +50,8 @@ storage/app/private/books/{folder_name}/
 
 | فایل | محتوا |
 |---|---|
-| `api.php` | مصرف‌کننده: اپِ فلاتر. `/register`, `/login`, `/books`, `/books/{book}/download`, `/books/{book}/zip-info`, `/books/{book}/download-zip`, و `/logout` پشتِ Sanctum. |
-| `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود، `checkout/{book}`، `payment/verify`، و مسیرِ `admin.book-asset` برای پیش‌نمایشِ رسانه در پنل. |
+| `api.php` | مصرف‌کننده: اپِ فلاتر. `/register`, `/login`, `/books`, `/books/{book}/download`, `/books/{book}/zip-info`, `/books/{book}/download-zip`, `/app/latest` (آخرین نسخه‌ی خودِ اپ؛ بی‌احراز)، و `/logout` پشتِ Sanctum. |
+| `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود، `checkout/{book}`، `payment/verify`، مسیرِ `admin.book-asset` برای پیش‌نمایشِ رسانه در پنل، و `/app` + `/app/download/{platform}` (توزیعِ خودِ اپ). |
 
 ### API (`app/Http/Controllers/Api/`)
 
@@ -83,6 +83,12 @@ storage/app/private/books/{folder_name}/
   **دسته‌بندی‌شده** است: کارت‌های دسته‌ها ← `/?category={id|other}` کتاب‌های همان
   دسته. با فقط یک دسته، مستقیم کتاب‌ها. نما در `resources/views/partials/catalog.blade.php`
   (مشترکِ `welcome` برای مهمان و `dashboard` برای کاربرِ واردشده).
+- `AppReleaseController.php` — **توزیعِ خودِ اپ از سایت** (اپ در فروشگاه نیست):
+  `page` صفحه‌ی `/app` (`resources/views/app.blade.php`، کارتِ هر سکو + راهنمای
+  نصب)، `download` فایلِ آخرین نسخه با `response()->download` (Range دارد)، و
+  `latest` برای `GET /api/app/latest?platform=` که اپ با آن نسخه‌ی تازه را تشخیص
+  می‌دهد (`build_number`، `min_supported_build`، `page_url`). قانون‌های U-1 تا U-4
+  در `RULES-rendering.md`ِ اپ.
 - `WebAuthController.php` — ورود/خروجِ سایت. بعد از ورودِ موفق
   `redirect()->intended(...)` می‌کند تا کاربر به همان صفحه‌ای برگردد که
   جلسه‌اش منقضی شده بود.
@@ -111,6 +117,9 @@ storage/app/private/books/{folder_name}/
     `deleteAssetFile` — حذفِ گروهی و مدیریتِ تکیِ فایل‌ها.
   - `columnFor` / `versionColumnFor` — نگاشتِ (scope, kind) به نامِ ستونِ
     دیتابیس. **اگر ستونِ جدیدی اضافه کردید، این دو تا را هم به‌روز کنید.**
+- `AppReleaseResource.php` — «نسخه‌های اپ»: سکو، نسخه، **build (یکتا در هر سکو؛
+  همان عددِ بعد از `+` در pubspec)**، فایلِ نصبی (دیسکِ `local`، `app-releases/`)،
+  تغییرات، «اجباری»، «منتشرشده».
 - `AdminPanelProvider.php` — رنگ، فونتِ فارسی، CSSِ تزریقی برای دکمه‌های
   شناور و راست‌به‌چپ، و میدل‌ویرهای سفارشیِ ورود.
 
@@ -137,6 +146,12 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
 `Book::groupForCatalog` گروه‌بندیِ صفحه‌ی اصلی را می‌سازد. API هر کتاب را با شیءِ
 `category` و `sort_order` می‌فرستد؛ نسخه‌های قدیمیِ اپ این‌ها را نادیده می‌گیرند
 ولی همان ترتیبِ درست را می‌بینند. تست‌ها: `tests/Feature/BookCatalogTest.php`.
+
+**نسخه‌های اپ:** `app_releases` (ایندکسِ یکتای `(platform, build_number)`).
+`AppRelease::latestFor` = بیشترین build در میانِ منتشرشده‌های دارای فایل؛
+`minSupportedBuild` = بیشترین build در میانِ منتشرشده‌های اجباری. هوک‌های مدل حجم را
+از دیسک می‌خوانند و فایلِ قدیمی را با جایگزینی/حذف پاک می‌کنند. تست‌ها:
+`tests/Feature/AppReleaseTest.php`.
 
 ### میدل‌ویرها
 

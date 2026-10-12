@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\BookController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/books', [BookController::class, 'index']);
+// 🌟 بررسیِ نسخه‌ی تازه‌ی اپ (عمومی): ?platform=android|windows
+Route::get('/app/latest', [\App\Http\Controllers\AppReleaseController::class, 'latest']);
 // این مسیر خارج از گروه میدل‌ویر قرار می‌گیرد
 Route::get('/books/{book}/download', [BookController::class, 'download']);
 

@@ -10,6 +10,12 @@ use App\Http\Controllers\Admin\BookController as AdminBookController;
 // صفحه اصلی سایت (معرفی اپلیکیشن و محصول)
 Route::get('/', [WebController::class, 'homePage'])->name('home');
 
+// 🌟 دریافتِ اپ از خودِ سایت (بدونِ فروشگاه): صفحه‌ی دریافت و فایلِ آخرین نسخه.
+Route::get('/app', [\App\Http\Controllers\AppReleaseController::class, 'page'])->name('app.page');
+Route::get('/app/download/{platform}', [\App\Http\Controllers\AppReleaseController::class, 'download'])
+    ->where('platform', 'android|windows')
+    ->name('app.download');
+
 use App\Http\Controllers\WebAuthController;
 
 Route::get('/register', [WebController::class, 'showRegisterForm'])->name('register');
