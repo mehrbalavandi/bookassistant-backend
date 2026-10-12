@@ -34,34 +34,9 @@
     <div class="container">
         <h2 style="margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">کتاب‌های آموزشی دسترس</h2>
         
-        <div class="grid">
-            @foreach($books as $book)
-                <div class="card">
-                    <h3>{{ $book->title }}</h3>
-                    
-                    <div class="price">
-                        @if($book->price == 0)
-                            <span style="color: blue;">رایگان</span>
-                        @elseif($book->discount > 0)
-                            <span style="text-decoration: line-through; color: #9ca3af; font-size: 14px;">
-                                {{ number_format($book->price) }}
-                            </span>
-                            <span style="background-color: #ef4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px;">
-                                {{ $book->discount }}%
-                            </span>
-                            <br>
-                            {{ number_format($book->final_price) }} تومان
-                        @else
-                            {{ number_format($book->price) }} تومان
-                        @endif
-                    </div>
-
-                    <a href="{{ url('/login') }}" class="btn btn-primary" style="display: block; margin-top: 15px;">
-                        ورود و خرید کتاب
-                    </a>
-                </div>
-            @endforeach
-        </div>
+        {{-- 🌟 فهرستِ دسته‌بندی‌شده (دسته‌ها ← کتاب‌های هر دسته) --}}
+        
+        @include('partials.catalog', ['canBuy' => false])
     </div>
 
 </body>

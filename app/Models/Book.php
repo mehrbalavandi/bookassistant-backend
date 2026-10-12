@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class Book extends Model
@@ -25,6 +27,8 @@ class Book extends Model
         'sample_images',      // <--- جدید
         'price',     // 🌟 اضافه شد
         'discount',  // 🌟 اضافه شد
+        'category_id', // 🌟 دسته‌ی کتاب (null = «سایر کتاب‌ها»)
+        'sort_order',  // 🌟 شماره‌ی ردیف داخلِ دسته — یکتا در هر دسته
     ];
 
     protected $casts = [
@@ -36,6 +40,7 @@ class Book extends Model
         'audio_version' => 'integer',
         'images_version' => 'integer',
         'sample_version' => 'integer',
+        'sort_order' => 'integer',
     ];
 
     /**
@@ -57,6 +62,55 @@ class Book extends Model
             }
             Storage::disk('local')->deleteDirectory("books/{$folder}");
         });
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(BookCategory::class, 'category_id');
+    }
+
+    /** شماره‌ی ردیفِ پیشنهادی در یک دسته: یکی بعد از آخرین کتابِ همان دسته. */
+    public static function nextSortOrder(?int $categoryId): int
+    {
+        $query = static::query();
+        $categoryId === null ? $query->whereNull('category_id') : $query->where('category_id', $categoryId);
+
+        return ((int) $query->max('sort_order')) + 1;
+    }
+
+    /**
+     * 🌟 ترتیبِ نمایش در سایت و API (هر دو از همین‌جا، تا هرگز با هم فرق نکنند):
+     * ۱) دسته‌ها به ترتیبِ sort_orderِ دسته؛ کتاب‌های بی‌دسته («سایر») آخر.
+     * ۲) داخلِ هر دسته به ترتیبِ sort_orderِ کتاب؛ بعد id (فقط برای پایداری).
+     * کتاب‌ها باید با رابطه‌ی category لود شده باشند.
+     */
+    public static function sortForCatalog(Collection $books): Collection
+    {
+        $key = fn (Book $b) => [
+            $b->category === null ? 1 : 0,
+            $b->category?->sort_order ?? 0,
+            $b->sort_order ?? PHP_INT_MAX,
+            $b->id,
+        ];
+
+        return $books->sort(fn (Book $a, Book $b) => $key($a) <=> $key($b))->values();
+    }
+
+    /**
+     * 🌟 گروه‌بندیِ کتاب‌های مرتب‌شده بر اساسِ دسته، به همان ترتیب.
+     * هر گروه: key (شناسه‌ی دسته یا "other")، title، description، books.
+     */
+    public static function groupForCatalog(Collection $sortedBooks): Collection
+    {
+        return $sortedBooks
+            ->groupBy(fn (Book $b) => $b->category_id === null ? 'other' : (string) $b->category_id)
+            ->map(fn (Collection $books, string $key) => (object) [
+                'key' => $key,
+                'title' => $books->first()->category?->title ?? 'سایر کتاب‌ها',
+                'description' => $books->first()->category?->description,
+                'books' => $books->values(),
+            ])
+            ->values();
     }
 
     public function purchasers()

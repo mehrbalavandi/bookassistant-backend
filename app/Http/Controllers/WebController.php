@@ -53,7 +53,9 @@ class WebController extends Controller
         }
 
         // 🌟 اضافه کردن قیمت و تخفیف به کوئری
-        $books = Book::select('id', 'title', 'folder_name', 'price', 'discount')->get();
+        $books = Book::select('id', 'title', 'folder_name', 'price', 'discount', 'category_id', 'sort_order')
+            ->with('category:id,title,description,sort_order')
+            ->get();
         $purchasedBookIds = [];
 
         if (Auth::check()) {
@@ -67,11 +69,24 @@ class WebController extends Controller
             return $book;
         });
 
-        if (!Auth::check()) {
-            return view('welcome', compact('books'));
+        // 🌟 فهرستِ دسته‌بندی‌شده: اول دسته‌ها (به ترتیبِ شماره‌ی ردیفِ دسته)، با
+        // انتخابِ هر دسته فهرستِ کتاب‌هایش (به ترتیبِ شماره‌ی ردیفِ کتاب). اگر فقط
+        // یک دسته هست، همان مستقیم باز می‌شود (یک کلیکِ بی‌فایده کمتر).
+        $books = Book::sortForCatalog($books);
+        $groups = Book::groupForCatalog($books);
+        $selectedKey = request()->query('category');
+        $selected = $selectedKey !== null ? $groups->firstWhere('key', (string) $selectedKey) : null;
+        if (! $selected && $groups->count() === 1) {
+            $selected = $groups->first();
         }
 
-        return view('dashboard', compact('books'));
+        $data = compact('books', 'groups', 'selected');
+
+        if (!Auth::check()) {
+            return view('welcome', $data);
+        }
+
+        return view('dashboard', $data);
     }
 
     // ۲. اصلاح متد پرداخت برای استفاده از قیمت با تخفیف

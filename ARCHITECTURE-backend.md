@@ -79,7 +79,10 @@ storage/app/private/books/{folder_name}/
 ### وب (`app/Http/Controllers/`)
 
 - `WebController.php` — صفحه‌ی اصلی، ثبت‌نام، `checkout` و `verifyPayment`
-  (درگاهِ پرداخت؛ تنظیماتش در `config/payment.php`).
+  (درگاهِ پرداخت؛ تنظیماتش در `config/payment.php`). صفحه‌ی اصلی فهرستِ
+  **دسته‌بندی‌شده** است: کارت‌های دسته‌ها ← `/?category={id|other}` کتاب‌های همان
+  دسته. با فقط یک دسته، مستقیم کتاب‌ها. نما در `resources/views/partials/catalog.blade.php`
+  (مشترکِ `welcome` برای مهمان و `dashboard` برای کاربرِ واردشده).
 - `WebAuthController.php` — ورود/خروجِ سایت. بعد از ورودِ موفق
   `redirect()->intended(...)` می‌کند تا کاربر به همان صفحه‌ای برگردد که
   جلسه‌اش منقضی شده بود.
@@ -89,7 +92,12 @@ storage/app/private/books/{folder_name}/
 
 ### پنلِ ادمین (`app/Filament/`)
 
-- `BookResource.php` — فرمِ کتاب و جدولِ فهرست.
+- `BookCategoryResource.php` — دسته‌های کتاب (عنوان، توضیح، **شماره‌ی ردیفِ
+  یکتا**). دسته‌ای که کتاب دارد حذف نمی‌شود.
+- `BookResource.php` — فرمِ کتاب و جدولِ فهرست. بخشِ «دسته و ترتیبِ نمایش»:
+  دسته (با امکانِ ساختِ دسته‌ی تازه همان‌جا) و **شماره‌ی ردیف در دسته** (یکتا در
+  هر دسته؛ با انتخابِ دسته «یکی بعد از آخرین» پیشنهاد می‌شود). جدول بر اساسِ دسته
+  گروه‌بندی و به ترتیبِ ردیف مرتب است.
 - **`BookResource/Pages/EditBook.php` (568 خط)** — بیشترِ کارِ ادمین این‌جاست:
   - `uploadArchiveAction` — آپلودِ ZIP یا RAR. **قبل از هر تخریبی**
     `probeArchive` چک می‌کند که فایل اصلاً قابلِ استخراج هست یا نه (وگرنه
@@ -119,6 +127,16 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
 
 جدولِ واسطِ `book_user` مالکیت را نگه می‌دارد — همان چیزی که
 `authorizeScope` می‌خواند.
+
+**دسته‌ها و ترتیبِ نمایش:** `book_categories` (`title`، `description`،
+`sort_order` یکتا) و در `books`: `category_id` (null = «سایر کتاب‌ها»؛ کلیدِ
+خارجیِ restrict، پس دسته‌ی پُر حذف نمی‌شود) و `sort_order` با ایندکسِ یکتای
+`(category_id, sort_order)`. **ترتیبِ نمایش فقط از `Book::sortForCatalog` می‌آید**
+(سایت و API هر دو؛ پنل هم همین ترتیب را دارد): دسته‌ها به `sort_order`ِ دسته،
+بی‌دسته‌ها آخر، داخلِ دسته به `sort_order`ِ کتاب — نه ترتیبِ آپلود.
+`Book::groupForCatalog` گروه‌بندیِ صفحه‌ی اصلی را می‌سازد. API هر کتاب را با شیءِ
+`category` و `sort_order` می‌فرستد؛ نسخه‌های قدیمیِ اپ این‌ها را نادیده می‌گیرند
+ولی همان ترتیبِ درست را می‌بینند. تست‌ها: `tests/Feature/BookCatalogTest.php`.
 
 ### میدل‌ویرها
 

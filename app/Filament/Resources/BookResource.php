@@ -13,6 +13,13 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Placeholder;
 use Illuminate\Support\Facades\Storage;
+use App\Models\BookCategory;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\Unique;
 
 class BookResource extends Resource
 {
@@ -20,6 +27,7 @@ class BookResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $modelLabel = 'کتاب';
     protected static ?string $pluralModelLabel = 'کتاب‌ها';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
@@ -41,6 +49,52 @@ class BookResource extends Resource
                     TextInput::make('discount')
                         ->label('درصد تخفیف')->numeric()->default(0)
                         ->minValue(0)->maxValue(100),
+                ]),
+            ]),
+
+            // 🌟 دسته و ترتیبِ نمایش: کتاب‌ها در سایت و اپ به ترتیبِ «شماره‌ی ردیف»
+            // داخلِ دسته‌شان نشان داده می‌شوند، نه به ترتیبِ آپلود.
+            Section::make('دسته و ترتیبِ نمایش')->schema([
+                Grid::make(2)->schema([
+                    Select::make('category_id')
+                        ->label('دسته')
+                        ->relationship('category', 'title', fn (Builder $query) => $query->orderBy('sort_order'))
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->live()
+                        // دسته‌ی تازه همین‌جا هم ساخته می‌شود.
+                        ->createOptionForm([
+                            TextInput::make('title')->label('عنوانِ دسته')->required()->maxLength(255),
+                            TextInput::make('sort_order')->label('شماره‌ی ردیفِ دسته')
+                                ->numeric()->integer()->minValue(1)->required()
+                                ->default(fn () => BookCategory::nextSortOrder())
+                                ->unique(table: BookCategory::class, column: 'sort_order'),
+                            Textarea::make('description')->label('توضیح (اختیاری)')->rows(2),
+                        ])
+                        // با انتخابِ دسته، اگر ردیف هنوز خالی است، «یکی بعد از آخرین» پیشنهاد می‌شود.
+                        ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                            if (blank($get('sort_order'))) {
+                                $set('sort_order', Book::nextSortOrder($state ? (int) $state : null));
+                            }
+                        }),
+
+                    TextInput::make('sort_order')
+                        ->label('شماره‌ی ردیف در دسته')
+                        ->helperText('ترتیبِ این کتاب داخلِ دسته‌اش؛ یکتا در هر دسته. مثال: Mindset 01 ← 1')
+                        ->numeric()
+                        ->integer()
+                        ->minValue(1)
+                        ->required()
+                        ->unique(
+                            table: Book::class,
+                            column: 'sort_order',
+                            ignoreRecord: true,
+                            modifyRuleUsing: fn (Unique $rule, Get $get) => $rule->where('category_id', $get('category_id')),
+                        )
+                        ->validationMessages([
+                            'unique' => 'این شماره‌ی ردیف در این دسته قبلاً به کتابِ دیگری داده شده.',
+                        ]),
                 ]),
             ]),
 
@@ -96,7 +150,21 @@ class BookResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            // 🌟 گروه‌بندی بر اساسِ دسته (به ترتیبِ شماره‌ی ردیفِ دسته؛ «بدون دسته» آخر)
+            // و داخلِ هر دسته به ترتیبِ شماره‌ی ردیفِ کتاب — همان ترتیبِ سایت و اپ.
+            ->groups([
+                Tables\Grouping\Group::make('category.title')
+                    ->label('دسته')
+                    ->getTitleFromRecordUsing(fn (Book $record) => $record->category?->title ?? 'بدون دسته')
+                    ->orderQueryUsing(fn (Builder $query, string $direction) => $query
+                        ->orderByRaw('(select sort_order from book_categories where book_categories.id = books.category_id) is null')
+                        ->orderByRaw('(select sort_order from book_categories where book_categories.id = books.category_id) ' . ($direction === 'desc' ? 'desc' : 'asc')))
+                    ->collapsible(),
+            ])
+            ->defaultGroup('category.title')
+            ->defaultSort('sort_order')
             ->columns([
+                Tables\Columns\TextColumn::make('sort_order')->label('ردیف')->sortable(),
                 Tables\Columns\TextColumn::make('title')->label('عنوان کتاب')->searchable(),
                 Tables\Columns\TextColumn::make('folder_name')->label('نام پوشه'),
                 Tables\Columns\TextColumn::make('json_version')->label('نسخه دیتا'),

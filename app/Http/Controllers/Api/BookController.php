@@ -26,8 +26,18 @@ class BookController extends Controller
             'audio_files',
             'audio_version',
             'images',
-            'images_version'
-        ])->get();
+            'images_version',
+            'category_id', // 🌟 دسته‌ی کتاب
+            'sort_order',  // 🌟 شماره‌ی ردیف داخلِ دسته
+        ])
+            // 🌟 هر کتاب شیءِ category را هم دارد ({id, title, description, sort_order})
+            // یا null برای «سایر کتاب‌ها». اپ از همین گروه‌بندی و مرتب می‌کند.
+            ->with('category:id,title,description,sort_order')
+            ->get();
+        // 🌟 ترتیب: دسته‌ها به sort_orderِ دسته، کتاب‌ها به sort_orderِ خودشان —
+        // نه ترتیبِ آپلود. نسخه‌های قدیمیِ اپ هم که گروه‌بندی نمی‌کنند، دست‌کم
+        // همین ترتیبِ درست را می‌بینند.
+        $books = Book::sortForCatalog($books);
 
         $purchasedBookIds = [];
 
