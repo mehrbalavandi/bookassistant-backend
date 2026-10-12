@@ -19,6 +19,24 @@
         .card h3 { margin-top: 0; color: #111827; font-size: 18px; }
         .price { font-size: 16px; color: #059669; font-weight: bold; margin: 15px 0; }
         .free { color: #2563eb; }
+
+        /* 📱 موبایل: سربرگ دوطبقه (عنوان، بعد دکمه‌ها تمام‌عرض)، فاصله‌های کمتر، کارت‌ها یک‌ستونه */
+        html { background-color: #f4f6f9; }
+        .header { flex-wrap: wrap; gap: 12px; }
+        .header h2 { margin: 0; font-size: clamp(17px, 4.6vw, 24px); line-height: 1.6; }
+        .header .btn { white-space: nowrap; }
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .header { padding: 14px 16px; }
+            .header > div { display: flex; gap: 8px; width: 100%; }
+            .header > div > a, .header > div > form { flex: 1; margin: 0 !important; }
+            .header > div .btn { display: block; width: 100%; box-sizing: border-box; text-align: center; padding: 10px 12px; }
+            .container { margin: 20px auto; }
+            .container > h2 { font-size: 18px; }
+            .grid { grid-template-columns: 1fr; gap: 14px; }
+            .card { padding: 16px; }
+            .card:hover { transform: none; }
+        }
     </style>
 </head>
 <body>

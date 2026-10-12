@@ -8,9 +8,9 @@
     <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
     <style>body { font-family: var(--font-fa); }</style>
 </head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen">
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
 
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md">
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md">
         <h2 class="text-2xl font-bold text-center text-slate-900 mb-6">ورود به حساب کاربری</h2>
 
         @if($errors->any())

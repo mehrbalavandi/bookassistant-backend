@@ -5,7 +5,7 @@
     - $canBuy: true در داشبورد (دکمه‌ی خرید/خریداری‌شده)، false برای مهمان (ورود و خرید)
 --}}
 <style>
-    .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+    .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 20px; }
     .cat-card { display: block; background: white; border-radius: 12px; padding: 22px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; text-decoration: none; color: inherit; transition: transform 0.2s, border-color 0.2s; }
     .cat-card:hover { transform: translateY(-4px); border-color: #4f46e5; }
     .cat-card h3 { margin: 0 0 8px; color: #111827; font-size: 18px; }
@@ -14,6 +14,14 @@
     .cat-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .cat-back { color: #4f46e5; text-decoration: none; font-weight: bold; font-size: 14px; }
     .cat-desc { color: #6b7280; margin: 0 0 25px; line-height: 1.8; }
+    /* 📱 موبایل: کارت‌ها تمام‌عرض و فشرده‌تر؛ کلِ کارت لمس‌پذیر است */
+    @media (max-width: 600px) {
+        .cat-grid { gap: 12px; }
+        .cat-card { padding: 16px; }
+        .cat-card:hover { transform: none; }
+        .cat-card h3 { font-size: 16px; }
+        .cat-desc { margin-bottom: 16px; font-size: 14px; }
+    }
 </style>
 
 @if($groups->isEmpty())
