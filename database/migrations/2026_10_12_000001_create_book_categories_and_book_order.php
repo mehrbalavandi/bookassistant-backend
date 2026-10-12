@@ -51,9 +51,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('books', function (Blueprint $table) {
+            // 🐞 ترتیب مهم است: در MySQL کلیدِ خارجیِ category_id از ایندکسِ یکتای
+            // (category_id, sort_order) استفاده می‌کند، پس اول کلیدِ خارجی، بعد ایندکس
+            // (وگرنه خطای 1553 «needed in a foreign key constraint» و rollback نمی‌شود).
+            $table->dropForeign(['category_id']);
             $table->dropUnique(['category_id', 'sort_order']);
-            $table->dropConstrainedForeignId('category_id');
-            $table->dropColumn('sort_order');
+            $table->dropColumn(['category_id', 'sort_order']);
         });
 
         Schema::dropIfExists('book_categories');
