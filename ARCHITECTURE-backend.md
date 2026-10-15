@@ -51,8 +51,8 @@ storage/app/private/books/{folder_name}/
 
 | فایل | محتوا |
 |---|---|
-| `api.php` | مصرف‌کننده: اپِ فلاتر. `/register`, `/login`, `/books`, `/books/{book}/download`, `/books/{book}/zip-info`, `/books/{book}/download-zip`, `/app/latest` (آخرین نسخه‌ی خودِ اپ؛ بی‌احراز)، و `/logout` پشتِ Sanctum. |
-| `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود، `checkout/{book}`، `payment/verify`، مسیرِ `admin.book-asset` برای پیش‌نمایشِ رسانه در پنل، و `/app` + `/app/download/{platform}` (توزیعِ خودِ اپ). |
+| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
+| `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود (ایمیل و `/login/otp`)، `checkout/{book}` (سفارش می‌سازد)، `/pay/{order}` (لینکِ امضاشده ← درگاه)، `/payment/callback/{order}` (برگشت از درگاه، بی‌CSRF)، `admin.book-asset` و `admin.order-receipt` (فقط ادمین)، و `/app` + `/app/download/{platform}`. |
 
 ### API (`app/Http/Controllers/Api/`)
 
@@ -75,12 +75,64 @@ storage/app/private/books/{folder_name}/
 - `downloadZip` — استریمِ آرشیو با پشتیبانی از هدرِ `Range`، یعنی
   pause/resume در اپ ممکن است.
 
-**`AuthController.php`** — ثبت‌نام/ورود/خروجِ اپ با توکنِ Sanctum.
+**`AuthController.php`** — ثبت‌نام/ورود/خروجِ اپ با ایمیل و رمز (حساب‌های قدیمی).
+
+**`OtpAuthController.php`** — ورود/ثبت‌نام با موبایل و کدِ پیامکی (AUTH-1، AUTH-2):
+`request` کد می‌فرستد و می‌گوید شماره ثبت‌شده هست یا نه؛ `verify` کد را می‌سنجد و
+برای کاربرِ تازه نام و نام خانوادگی می‌خواهد (۴۲۲ با `needs_profile` پیش از مصرفِ
+کد). `me`، `updateProfile`، و `linkMobile` (حسابِ ایمیلی شماره می‌گیرد و خریدهایش
+می‌ماند). منطقِ کد در `app/Services/OtpService.php`:
+- کد با `random_int` ساخته می‌شود و فقط هشش ذخیره می‌شود (`otp_codes`).
+- اعتبار ۱۸۰ ثانیه است و ارسالِ دوباره ۱۲۰ ثانیه فاصله می‌خواهد.
+- بعد از ۵ تلاشِ اشتباه کد باطل می‌شود.
+
+سقفِ درخواست به‌ازای IP و شماره در `AppServiceProvider` تعریف شده است
+(`otp-request`، `otp-verify`).
+
+پیامک (`app/Services/Sms/`): رابطِ `SmsSender` با سه پیاده‌سازی، که از روی `SMS_DRIVER`
+انتخاب می‌شود (`config/sms.php`):
+- `LogSmsSender`: فقط لاگ. در حالتِ debug کد را در پاسخ هم برمی‌گرداند تا اپ بدونِ
+  پیامک تست شود.
+- `KavenegarSmsSender`: verify/lookup.
+- `SmsIrSmsSender`: send/verify.
+
+همه با قالبِ تأییدشده کار می‌کنند. `App\Support\Mobile::normalize` هر شکلِ شماره
+(ارقامِ فارسی، ‎+98، …) را `09xxxxxxxxx` می‌کند.
+
+**`BackupController.php`** — پشتیبانِ داده‌های کاربر (BK-1..3):
+- **`syncStudy`:** همگام‌سازیِ دوطرفه و افزایشیِ «مرورِ من» (`study_items`).
+  - قاعده‌ی «آخرین تغییر برنده است» با `client_updated_ms` اعمال می‌شود.
+  - حذف = سنگِ قبر (`deleted`).
+  - پاسخ = تغییرهای از `since_ms` به بعد (`server_ms`)، با ۱۰ ثانیه هم‌پوشانی.
+  - `payload` همان JSONِ اپ است؛ ستون‌های جدا برای گزارش.
+- **`getSettings` / `putSettings`:** یک JSON برای تنظیمات (`user_settings`).
+- **`touchDevice`:** دستگاه‌ها (`user_devices`) و `users.last_seen_at`.
+
+**`OrderController.php`** — خرید از اپ (PAY-2/3):
+- `options`: روش‌های فعال و مشخصاتِ کارت.
+- `store`: سفارش می‌سازد.
+  - درگاه ← `pay_url` (لینکِ امضاشده‌ی ۳۰ دقیقه‌ای).
+  - کارت ← مشخصاتِ کارت.
+  - کتابِ رایگان همان‌جا فعال می‌شود.
+- `index`.
+- `receipt`: رسیدِ کارت‌به‌کارت، فقط برای صاحبِ سفارش. تصویر به دیسکِ خصوصی
+  (`receipts/`) می‌رود.
+
+همه‌ی منطقِ سفارش در `app/Services/OrderService.php` است: `create`، `payUrl`،
+`startGateway`، `verifyGateway`، `submitCardReceipt`، `approve`/`reject` (با پیامکِ
+قالب‌دارِ اختیاری)، و **`grant` — تنها جایی که کتاب به کاربر داده می‌شود**.
 
 ### وب (`app/Http/Controllers/`)
 
-- `WebController.php` — صفحه‌ی اصلی، ثبت‌نام، `checkout` و `verifyPayment`
-  (درگاهِ پرداخت؛ تنظیماتش در `config/payment.php`). صفحه‌ی اصلی فهرستِ
+- `WebController.php` — صفحه‌ی اصلی، ثبت‌نام و `checkout`. `checkout` سفارش می‌سازد و
+  به همان لینکِ امضاشده‌ای می‌رود که اپ استفاده می‌کند.
+- `PaymentController.php` — `start` (لینکِ امضاشده ← فرمِ درگاه) و `callback`
+  (برگشت از درگاه). در `callback` شناسه‌ی تراکنشِ برگشتی (Authority) باید با سفارش جور
+  باشد؛ نتیجه در `resources/views/payment/result.blade.php` نمایش داده می‌شود. هیچ‌کدام
+  نشستِ وب نمی‌خواهند. درگاه: `PAYMENT_GATEWAY` (`config/shop.php`) و تنظیماتش در
+  `config/payment.php` (حالتِ زرین‌پال با `ZARINPAL_MODE`).
+- `WebOtpController.php` — ورود/ثبت‌نام با موبایل در سایت (`auth/login-otp.blade.php`).
+- `Admin/OrderReceiptController.php` — تصویرِ رسیدِ کارت‌به‌کارت، فقط برای ادمین. صفحه‌ی اصلی فهرستِ
   **دسته‌بندی‌شده** است: کارت‌های دسته‌ها ← `/?category={id|other}` کتاب‌های همان
   دسته. با فقط یک دسته، مستقیم کتاب‌ها. نما در `resources/views/partials/catalog.blade.php`
   (مشترکِ `welcome` برای مهمان و `dashboard` برای کاربرِ واردشده).
@@ -121,6 +173,13 @@ storage/app/private/books/{folder_name}/
 - `AppReleaseResource.php` — «نسخه‌های اپ»: سکو، نسخه، **build (یکتا در هر سکو؛
   همان عددِ بعد از `+` در pubspec)**، فایلِ نصبی (دیسکِ `local`، `app-releases/`)،
   تغییرات، «اجباری»، «منتشرشده».
+- `OrderResource.php` — «سفارش‌ها»:
+  - زبانه‌های «منتظرِ بررسی / پرداخت‌شده / همه» و نشانِ تعدادِ منتظرها روی منو.
+  - کنشِ «رسید»: کدِ پیگیری، ۴ رقمِ کارت و تصویر.
+  - «تأیید و فعال‌سازی» با `OrderService::approve`.
+  - «رد» با دلیل، که کاربر در اپ می‌بیند.
+- `UserResource.php` — «کاربران» (فقط خواندنی): موبایل، تعدادِ خرید، تعدادِ موردهای
+  مرور، دستگاه‌ها، نسخه‌ی اپ، آخرین بازدید.
 - `AdminPanelProvider.php` — رنگ، فونتِ فارسی، CSSِ تزریقی برای دکمه‌های
   شناور و راست‌به‌چپ، و میدل‌ویرهای سفارشیِ ورود.
 
@@ -153,6 +212,23 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
 `minSupportedBuild` = بیشترین build در میانِ منتشرشده‌های اجباری. هوک‌های مدل حجم را
 از دیسک می‌خوانند و فایلِ قدیمی را با جایگزینی/حذف پاک می‌کنند. تست‌ها:
 `tests/Feature/AppReleaseTest.php`.
+
+**حساب، پشتیبان و فروش:**
+- **`users`:** این ستون‌ها اضافه شدند:
+  - `mobile` (یکتا)، `mobile_verified_at`، `first_name`، `last_name`، `last_seen_at`
+  - `email` و `password` حالا nullable‌اند، چون حسابِ موبایلی آن‌ها را ندارد.
+- **`otp_codes`:** کدهای ورود.
+- **`study_items`:** مرورِ من؛ یکتا روی `(user_id, item_id)`.
+- **`user_settings`:** یک JSON برای هر کاربر.
+- **`user_devices`:** دستگاه‌ها؛ یکتا روی `(user_id, device_id)`.
+- **`orders`:** هر تلاش برای خرید.
+  - وضعیت‌ها: `pending` ← `paid` / `failed` / `canceled`؛ برای کارت:
+    `awaiting_review` ← `paid` / `rejected`.
+  - مبلغ (تومان)، کدهای پیگیری، مسیرِ رسید، بررسی‌کننده.
+- **`book_user`:** هنوز تنها منبعِ مالکیت است؛ فقط `OrderService::grant` آن را پر
+  می‌کند.
+
+تست‌ها: `tests/Feature/OtpAuthTest.php`، `BackupSyncTest.php`، `OrderFlowTest.php`.
 
 ### میدل‌ویرها
 

@@ -29,10 +29,27 @@ Route::post('/login', [WebAuthController::class, 'login']);
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
-    // پاس دادن آیدی کتاب در URL
+    // پاس دادن آیدی کتاب در URL — سفارش می‌سازد و به لینکِ امضاشده‌ی پرداخت می‌رود (PAY-2)
     Route::get('/checkout/{book}', [WebController::class, 'checkout'])->name('checkout');
-    Route::get('/payment/verify', [WebController::class, 'verifyPayment'])->name('payment.verify');
 });
+
+// 🌟 PAY-2: شروعِ پرداخت با لینکِ امضاشده (اپ و سایت) و برگشت از درگاه. نشستِ وب لازم نیست.
+Route::get('/pay/{order}', [\App\Http\Controllers\PaymentController::class, 'start'])
+    ->middleware('signed')->name('payment.start');
+Route::match(['get', 'post'], '/payment/callback/{order}', [\App\Http\Controllers\PaymentController::class, 'callback'])
+    ->name('payment.callback');
+
+// 🌟 AUTH-1: ورود با موبایل و کدِ پیامکی در سایت
+Route::get('/login/otp', [\App\Http\Controllers\WebOtpController::class, 'show'])->name('login.otp');
+Route::post('/login/otp/request', [\App\Http\Controllers\WebOtpController::class, 'request'])
+    ->middleware('throttle:otp-request')->name('login.otp.request');
+Route::post('/login/otp/verify', [\App\Http\Controllers\WebOtpController::class, 'verify'])
+    ->middleware('throttle:otp-verify')->name('login.otp.verify');
+
+// 🌟 PAY-3: تصویرِ رسیدِ کارت‌به‌کارت برای ادمین (فایل در دیسکِ خصوصی است)
+Route::middleware('auth')
+    ->get('/admin/order-receipt/{order}', [\App\Http\Controllers\Admin\OrderReceiptController::class, 'show'])
+    ->name('admin.order-receipt');
 
 Route::post('/logout', [WebController::class, 'logout'])->name('web.logout');
 

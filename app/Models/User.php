@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser; 
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'first_name', 'last_name', 'mobile', 'mobile_verified_at', 'email', 'password', 'last_seen_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements \Filament\Models\Contracts\FilamentUser
 {
@@ -21,6 +21,11 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
 
     protected $fillable = [
         'name',
+        'first_name', // 🌟 AUTH-1
+        'last_name',
+        'mobile',
+        'mobile_verified_at',
+        'last_seen_at',
         'email',
         'password',
         'is_admin', // این خط را هم اضافه کنید تا لاراول اجازه ذخیره آن را بدهد
@@ -34,6 +39,8 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
     {
         return [
             'email_verified_at' => 'datetime',
+            'mobile_verified_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean', // ⚠️ این خط را حتماً اضافه کنید
         ];
@@ -49,5 +56,40 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
     public function purchasedBooks()
     {
         return $this->belongsToMany(Book::class, 'book_user')->withTimestamps();
-    }    
+    }
+
+    // 🌟 BK-1..3 و PAY-1: پشتیبانِ داده‌ها، دستگاه‌ها و سفارش‌ها
+    public function studyItems()
+    {
+        return $this->hasMany(StudyItem::class);
+    }
+
+    public function settingsBackup()
+    {
+        return $this->hasOne(UserSetting::class);
+    }
+
+    public function devices()
+    {
+        return $this->hasMany(UserDevice::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /** خروجیِ یکسانِ «کاربر» برای اپ (ورود، /me). */
+    public function toAppArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'mobile' => $this->mobile,
+            'email' => $this->email,
+            'is_admin' => (bool) $this->is_admin,
+        ];
+    }
 }

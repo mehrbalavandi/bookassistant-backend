@@ -6,10 +6,8 @@ use App\Models\User;
 use App\Models\Book; // ⚠️ اضافه شدن مدل کتاب
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
-// کلاس‌های پرداخت
-use Shetabit\Multipay\Invoice;
-use Shetabit\Payment\Facade\Payment;
-use Shetabit\Multipay\Exceptions\InvalidPaymentException;
+use App\Models\Order;
+use App\Services\OrderService;
 use Illuminate\Support\Facades\Auth;
 
 class WebController extends Controller
@@ -89,8 +87,9 @@ class WebController extends Controller
         return view('dashboard', $data);
     }
 
-    // ۲. اصلاح متد پرداخت برای استفاده از قیمت با تخفیف
-    public function checkout(Request $request, Book $book)
+    // ۲. خرید از سایت (PAY-2): سفارش ساخته می‌شود و کاربر به لینکِ امضاشده‌ی پرداخت
+    // می‌رود — همان مسیری که اپ هم استفاده می‌کند (PaymentController).
+    public function checkout(Request $request, Book $book, OrderService $orders)
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
@@ -99,57 +98,12 @@ class WebController extends Controller
             return redirect()->back()->with('error', 'شما قبلاً این کتاب را خریداری کرده‌اید.');
         }
 
-        // 🌟 استفاده از اکسسور هوشمند نهایی (قیمت بعد از کسر تخفیف)
-        $amount = $book->final_price;
-
-        // اگر قیمت نهایی صفر بود (یا کتاب کلاً رایگان بوده یا تخفیف ۱۰۰٪ داشته)
-        if ($amount == 0) {
-            $user->purchasedBooks()->syncWithoutDetaching([$book->id]);
+        $order = $orders->create($user, $book, Order::METHOD_GATEWAY, 'web', $request->ip());
+        if ($order->status === Order::PAID) {
             return redirect()->back()->with('success', 'این محصول برای شما فعال شد.');
         }
 
-        $invoice = (new Invoice)->amount($amount);
-        $invoice->detail(['description' => 'خرید ' . $book->title . ' برای ' . $user->name]);
-
-        try {
-            return Payment::via('zarinpal') // یا هر درگاهی که تنظیم کردید
-                ->callbackUrl(route('payment.verify'))
-                ->purchase($invoice, function ($driver, $transactionId) use ($book) {
-                    session([
-                        'transaction_id' => $transactionId,
-                        'pending_book_id' => $book->id
-                    ]);
-                })->pay()->render();
-        } catch (\Exception $exception) {
-            return redirect()->route('home')->with('error', 'خطا در اتصال به درگاه: ' . $exception->getMessage());
-        }
-    }
-
-    // ۳. اصلاح متد تاییدیه پرداخت
-    public function verifyPayment(Request $request)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        $transactionId = session('transaction_id');
-        $bookId = session('pending_book_id');
-
-        if (!$transactionId || !$bookId) {
-            return redirect('/')->with('error', 'اطلاعات تراکنش یافت نشد.');
-        }
-
-        $book = Book::findOrFail($bookId);
-        // 🌟 تطبیق با قیمت نهایی تخفیف‌خورده در تاییدیه بانک
-        $amount = $book->final_price;
-
-        try {
-            $receipt = Payment::amount($amount)->transactionId($transactionId)->verify();
-            $user->purchasedBooks()->syncWithoutDetaching([$book->id]);
-            session()->forget(['transaction_id', 'pending_book_id']);
-
-            return redirect('/')->with('success', 'پرداخت موفقیت‌آمیز بود. شماره پیگیری: ' . $receipt->getReferenceId());
-        } catch (InvalidPaymentException $exception) {
-            return redirect('/')->with('error', 'پرداخت ناموفق بود: ' . $exception->getMessage());
-        }
+        return redirect()->to($orders->payUrl($order));
     }
 
     public function logout(Request $request)

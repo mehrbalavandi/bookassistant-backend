@@ -32,8 +32,10 @@
             <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">ورود</button>
         </form>
 
+        <a href="{{ route('login.otp') }}" class="block text-center w-full mt-4 border border-blue-600 text-blue-700 font-bold py-3 rounded-xl hover:bg-blue-50 transition">ورود یا ثبت‌نام با شماره‌ی موبایل</a>
+
         <p class="text-center text-sm text-slate-500 mt-6">
-            حساب کاربری ندارید؟ <a href="{{ route('register') }}" class="text-blue-600 font-bold">ثبت نام کنید</a>
+            حساب کاربری ندارید؟ <a href="{{ route('login.otp') }}" class="text-blue-600 font-bold">با موبایل ثبت‌نام کنید</a>
         </p>
     </div>
 

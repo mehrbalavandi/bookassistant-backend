@@ -338,7 +338,7 @@ return [
             'zaringateApiPaymentUrl' => 'https://www.zarinpal.com/pg/StartPay/:authority/ZarinGate',
             'zaringateApiVerificationUrl' => 'https://ir.zarinpal.com/pg/services/WebGate/wsdl',
 
-            'mode' => 'sandbox', // can be normal, sandbox, zaringate
+            'mode' => env('ZARINPAL_MODE', 'sandbox'), // can be normal, sandbox, zaringate — روی سرورِ واقعی: normal
             'merchantId' => env('ZARINPAL_MERCHANT_ID', 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'),
             'callbackUrl' => 'http://127.0.0.1:8000/',
             'description' => 'payment using zarinpal',

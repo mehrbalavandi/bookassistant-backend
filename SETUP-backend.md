@@ -107,7 +107,16 @@ composer install
 | `DB_*` | اتصال به MySQL |
 | `ARCHIVE_UPLOAD_MAX_MB` / `ARCHIVE_UPLOAD_MAX_MINUTES` | سقفِ حجم و زمانِ آپلود در پنل (با php.ini هماهنگ) |
 | `PASSWORD_MODE` | `strong` = رمزِ قوی در ثبت‌نامِ اپ؛ `lax` = هر رمزی (فقط برای تست) |
-| `ZARINPAL_MERCHANT_ID` | کدِ پذیرنده‌ی زرین‌پال (حالتِ فعلی در `config/payment.php`: sandbox) |
+| `ZARINPAL_MERCHANT_ID` / `ZARINPAL_MODE` | کدِ پذیرنده‌ی زرین‌پال؛ `sandbox` برای تست، `normal` روی سرورِ واقعی |
+| `PAYMENT_GATEWAY` / `PAYMENT_GATEWAY_ENABLED` | نامِ درایورِ درگاه در `config/payment.php` (zarinpal، zibal، sep، …) و روشن/خاموش |
+| `CARD_TRANSFER_*` | کارت‌به‌کارت: `ENABLED=true`، شماره‌ی کارت، نامِ صاحبِ کارت، بانک، شبا (اختیاری) |
+| `SMS_DRIVER` | `log` (توسعه: کد در لاگ و در پاسخِ API)، `kavenegar` یا `smsir` |
+| `KAVENEGAR_*` / `SMSIR_*` | کلیدِ API و نام/شناسه‌ی قالب‌ها (قالبِ ورود: کاوه‌نگار `%token%`، sms.ir پارامترِ `CODE`) |
+| `SANCTUM_EXPIRATION` | عمرِ توکنِ اپ به دقیقه (۵۲۵۶۰۰ = یک سال) |
+
+**روی سرورِ واقعی:** `APP_ENV=production`، `APP_DEBUG=false` (وگرنه با `SMS_DRIVER=log`
+کدِ ورود در پاسخ دیده می‌شود)، `ZARINPAL_MODE=normal`، و `SMS_DRIVER` یکی از دو
+سامانه‌ی واقعی.
 
 ## ۵. ساختنِ دیتابیس
 

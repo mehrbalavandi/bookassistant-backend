@@ -13,7 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // 🌟 PAY-2: درگاه نتیجه را با POST برمی‌گرداند و توکنِ CSRFِ ما را ندارد.
+        $middleware->validateCsrfTokens(except: ['payment/callback/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

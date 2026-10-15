@@ -1,6 +1,9 @@
 <?php
 
 use \App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\OtpAuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\BookController;
 
@@ -20,8 +23,30 @@ Route::get('/books/{book}/download', [BookController::class, 'download']);
 Route::get('/books/{book}/zip-info', [BookController::class, 'zipInfo']);
 Route::get('/books/{book}/download-zip', [BookController::class, 'downloadZip']);
 
+// 🌟 AUTH-1/2: ورود و ثبت‌نام با موبایل و کدِ پیامکی (با سقفِ درخواست، AppServiceProvider)
+Route::post('/auth/otp/request', [OtpAuthController::class, 'request'])->middleware('throttle:otp-request');
+Route::post('/auth/otp/verify', [OtpAuthController::class, 'verify'])->middleware('throttle:otp-verify');
+// 🌟 PAY-2/3: روش‌های پرداختِ فعال (عمومی؛ اپ پیش از ورود هم می‌تواند نشان دهد)
+Route::get('/shop/options', [OrderController::class, 'options']);
+
 // 🔴 مسیرهای محافظت‌شده (فقط کاربران لاگین شده به همراه توکن معتبر)
 Route::middleware('auth:sanctum')->group(function () {
     // خروج از حساب
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // 🌟 حساب
+    Route::get('/me', [OtpAuthController::class, 'me']);
+    Route::patch('/me', [OtpAuthController::class, 'updateProfile']);
+    Route::post('/me/mobile', [OtpAuthController::class, 'linkMobile'])->middleware('throttle:otp-verify');
+
+    // 🌟 BK-1..3: پشتیبانِ داده‌ها
+    Route::post('/backup/study/sync', [BackupController::class, 'syncStudy'])->middleware('throttle:60,1');
+    Route::get('/backup/settings', [BackupController::class, 'getSettings']);
+    Route::put('/backup/settings', [BackupController::class, 'putSettings'])->middleware('throttle:30,1');
+    Route::post('/devices', [BackupController::class, 'touchDevice'])->middleware('throttle:30,1');
+
+    // 🌟 PAY-2/3: سفارش‌ها
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:20,1');
+    Route::post('/orders/{order}/receipt', [OrderController::class, 'receipt'])->middleware('throttle:10,1');
 });
