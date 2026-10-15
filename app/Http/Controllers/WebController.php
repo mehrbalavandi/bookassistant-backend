@@ -28,7 +28,7 @@ class WebController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', 'confirmed', \App\Support\PasswordRules::forUsers()], // ADM-2: همان قانونِ اپ
         ]);
 
         $user = User::create([

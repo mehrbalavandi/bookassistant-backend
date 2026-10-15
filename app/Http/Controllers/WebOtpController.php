@@ -36,6 +36,9 @@ class WebOtpController extends Controller
         if (! $mobile) {
             return back()->withErrors(['mobile' => 'شماره‌ی موبایل معتبر نیست (مثلاً 09121234567).'])->withInput();
         }
+        if (User::onlyTrashed()->where('mobile', $mobile)->exists()) {
+            return back()->withErrors(['mobile' => 'این حساب غیرفعال شده است؛ با پشتیبانی تماس بگیرید.'])->withInput();
+        }
         try {
             $r = $this->otp->request($mobile, $request->ip());
         } catch (\Throwable) {

@@ -28,6 +28,9 @@ class OtpAuthController extends Controller
         if (! $mobile) {
             return $this->invalidMobile();
         }
+        if (User::onlyTrashed()->where('mobile', $mobile)->exists()) {
+            return $this->deactivated();
+        }
 
         try {
             $result = $this->otp->request($mobile, $request->ip());
@@ -69,6 +72,9 @@ class OtpAuthController extends Controller
             'device_name' => 'nullable|string|max:100',
         ]);
 
+        if (User::onlyTrashed()->where('mobile', $mobile)->exists()) {
+            return $this->deactivated();
+        }
         $user = User::where('mobile', $mobile)->first();
         $first = trim((string) ($data['first_name'] ?? ''));
         $last = trim((string) ($data['last_name'] ?? ''));
@@ -150,7 +156,7 @@ class OtpAuthController extends Controller
         }
         $request->validate(['code' => 'required|string|max:10']);
         $user = $request->user();
-        if (User::where('mobile', $mobile)->where('id', '!=', $user->id)->exists()) {
+        if (User::withTrashed()->where('mobile', $mobile)->where('id', '!=', $user->id)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'این شماره به حسابِ دیگری وصل است.',
@@ -163,6 +169,15 @@ class OtpAuthController extends Controller
         $user->forceFill(['mobile' => $mobile, 'mobile_verified_at' => now()])->save();
 
         return response()->json(['success' => true, 'user' => $user->toAppArray()]);
+    }
+
+    /** ADM-3: حسابی که ادمین غیرفعال کرده (داده‌هایش نگه داشته شده). */
+    private function deactivated(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'این حساب غیرفعال شده است؛ برای فعال‌سازیِ دوباره با پشتیبانی تماس بگیرید.',
+        ], 403);
     }
 
     private function invalidMobile(): JsonResponse
