@@ -29,6 +29,14 @@ class BookController extends Controller
             'images_version',
             'category_id', // 🌟 دسته‌ی کتاب
             'sort_order',  // 🌟 شماره‌ی ردیف داخلِ دسته
+            // 🌟 SF-1: معرفی در ویترین (قیمت، جلد، توضیح، …)
+            'price',
+            'discount',
+            'cover_image',
+            'description',
+            'author',
+            'publisher',
+            'level',
         ])
             // 🌟 هر کتاب شیءِ category را هم دارد ({id, title, description, sort_order})
             // یا null برای «سایر کتاب‌ها». اپ از همین گروه‌بندی و مرتب می‌کند.
@@ -52,6 +60,19 @@ class BookController extends Controller
         $books->transform(function ($book) use ($purchasedBookIds) {
             $book->is_purchased = in_array($book->id, $purchasedBookIds);
 
+            // 🌟 SF-1: آنچه اپ پیش از خرید یا دانلودِ نمونه نشان می‌دهد.
+            // has_sample: دکمه‌ی «دریافت نمونه» فقط وقتی نمونه واقعاً روی سرور هست فعال است.
+            $book->has_sample = $book->hasSample();
+            $book->final_price = (int) round($book->final_price);
+            $book->page_count = $book->pageCount();
+            $book->audio_count = count($book->audio_files ?? []);
+            // مسیرِ نسبی تا اپ آن را با همان آدرسِ سروری که تنظیم کرده بسازد؛ ?v= برای کشِ اپ.
+            $book->cover_version = $book->hasCover() ? $book->coverVersion() : null;
+            $book->cover_url = $book->cover_version
+                ? "/api/books/{$book->id}/cover?v={$book->cover_version}"
+                : null;
+            $book->makeHidden('cover_image');
+
             // قفل امنیتی سخت‌گیرانه:
             // اگر کاربر هزینه کتاب را پرداخت نکرده باشد، مسیر فایل‌های اصلی کاملاً null و خالی ارسال می‌شود.
             if (!$book->is_purchased) {
@@ -67,6 +88,18 @@ class BookController extends Controller
             'success' => true,
             'data' => $books
         ], 200);
+    }
+
+    // 🌟 SF-1: جلدِ کتاب (عمومی). نشانی نسخه‌دار است (?v=)، پس کشِ طولانی بی‌خطر است.
+    public function cover(Book $book)
+    {
+        if (! $book->hasCover()) {
+            return response()->json(['message' => 'این کتاب جلد ندارد.'], 404);
+        }
+
+        return Storage::disk('local')->response($book->cover_image, null, [
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
     }
 
     // ۲. دانلود نسخه نمونه (برای همه آزاد است)

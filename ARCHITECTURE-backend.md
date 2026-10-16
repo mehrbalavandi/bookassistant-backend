@@ -51,7 +51,7 @@ storage/app/private/books/{folder_name}/
 
 | فایل | محتوا |
 |---|---|
-| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
+| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/cover`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
 | `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود (ایمیل و `/login/otp`)، `checkout/{book}` (سفارش می‌سازد)، `/pay/{order}` (لینکِ امضاشده ← درگاه)، `/payment/callback/{order}` (برگشت از درگاه، بی‌CSRF)، `admin.book-asset` و `admin.order-receipt` (فقط ادمین)، و `/app` + `/app/download/{platform}`. |
 
 ### API (`app/Http/Controllers/Api/`)
@@ -221,6 +221,23 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
 `Book::groupForCatalog` گروه‌بندیِ صفحه‌ی اصلی را می‌سازد. API هر کتاب را با شیءِ
 `category` و `sort_order` می‌فرستد؛ نسخه‌های قدیمیِ اپ این‌ها را نادیده می‌گیرند
 ولی همان ترتیبِ درست را می‌بینند. تست‌ها: `tests/Feature/BookCatalogTest.php`.
+
+**معرفی در ویترین (SF-1):** ستون‌های `cover_image` (مسیر روی دیسکِ `local`، پوشه‌ی
+`covers/`)، `description`، `author`، `publisher`، `level`. همه اختیاری‌اند و از بخشِ
+«معرفی در ویترینِ اپ» در فرمِ کتاب پر می‌شوند. `GET /api/books` برای هر کتاب این‌ها را هم
+می‌فرستد:
+- `price`، `discount`، `final_price`
+- `has_sample`: فقط وقتی فایلِ `sample_file_path` واقعاً روی دیسک هست (`Book::hasSample`).
+  اپ دکمه‌ی «دریافت نمونه» را با همین فعال می‌کند.
+- `page_count`: تعدادِ فایل‌های `pages/`ِ نسخه‌ی کامل، کش‌شده با کلیدِ `json_version`.
+- `audio_count`: تعدادِ `audio_files`، پیش از اینکه مسیرها برای خریدارنشده خالی شوند.
+- `cover_version` و `cover_url`: نسبی، `/api/books/{id}/cover?v=…`.
+  - `cover_version` از مسیرِ فایل ساخته می‌شود. FileUpload هر جلدِ تازه را با نامِ تصادفی
+    ذخیره می‌کند، پس جلدِ تازه یعنی نسخه‌ی تازه.
+  - `GET /api/books/{book}/cover` عمومی است و `Cache-Control: immutable` دارد.
+- **پاک‌شدنِ جلد:** هوک‌های `updated`/`deleted`ِ مدل جلدِ قبلی را با جایگزینی و جلدِ کتاب را
+  با حذفِ کتاب پاک می‌کنند.
+- **تست‌ها:** `tests/Feature/BookStorefrontTest.php`.
 
 **نسخه‌های اپ:** `app_releases` (ایندکسِ یکتای `(platform, build_number)`).
 `AppRelease::latestFor` = بیشترین build در میانِ منتشرشده‌های دارای فایل؛

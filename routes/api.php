@@ -15,6 +15,8 @@ Route::get('/books', [BookController::class, 'index']);
 Route::get('/app/latest', [\App\Http\Controllers\AppReleaseController::class, 'latest']);
 // این مسیر خارج از گروه میدل‌ویر قرار می‌گیرد
 Route::get('/books/{book}/download', [BookController::class, 'download']);
+// 🌟 SF-1: جلدِ کتاب برای ویترینِ اپ (عمومی)
+Route::get('/books/{book}/cover', [BookController::class, 'cover']);
 
 // 🌟 دانلودِ یکجا به‌صورت ZIP (سریع‌تر از صدها درخواستِ فایل‌به‌فایل) —
 // zip-info حجم را می‌دهد و download-zip خودِ آرشیو را با پشتیبانیِ Range

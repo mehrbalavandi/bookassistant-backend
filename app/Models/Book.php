@@ -29,6 +29,12 @@ class Book extends Model
         'discount',  // 🌟 اضافه شد
         'category_id', // 🌟 دسته‌ی کتاب (null = «سایر کتاب‌ها»)
         'sort_order',  // 🌟 شماره‌ی ردیف داخلِ دسته — یکتا در هر دسته
+        // 🌟 SF-1: معرفی در ویترین
+        'cover_image',
+        'description',
+        'author',
+        'publisher',
+        'level',
     ];
 
     protected $casts = [
@@ -62,6 +68,56 @@ class Book extends Model
             }
             Storage::disk('local')->deleteDirectory("books/{$folder}");
         });
+
+        // 🌟 SF-1: جلدِ قبلی با جایگزینی/حذف، و جلدِ کتاب با حذفِ کتاب پاک می‌شود.
+        static::updated(function (Book $book) {
+            $old = $book->getOriginal('cover_image');
+            if ($book->wasChanged('cover_image') && $old && $old !== $book->cover_image) {
+                Storage::disk('local')->delete($old);
+            }
+        });
+        static::deleted(function (Book $book) {
+            if ($book->cover_image) {
+                Storage::disk('local')->delete($book->cover_image);
+            }
+        });
+    }
+
+    /** 🌟 SF-1: نمونه‌ی رایگان واقعاً روی سرور هست (نه فقط مسیرش در رکورد). */
+    public function hasSample(): bool
+    {
+        $path = trim((string) $this->sample_file_path);
+        return $path !== '' && Storage::disk('local')->exists($path);
+    }
+
+    /** 🌟 SF-1: جلد واقعاً روی سرور هست. */
+    public function hasCover(): bool
+    {
+        $path = trim((string) $this->cover_image);
+        return $path !== '' && Storage::disk('local')->exists($path);
+    }
+
+    /**
+     * نسخه‌ی جلد برای کشِ اپ: FileUpload هر فایلِ تازه را با نامِ تصادفی ذخیره می‌کند، پس
+     * عوض‌شدنِ مسیر یعنی جلدِ تازه.
+     */
+    public function coverVersion(): ?string
+    {
+        return $this->cover_image ? substr(md5($this->cover_image), 0, 12) : null;
+    }
+
+    /** تعدادِ صفحه‌های نسخه‌ی کامل (برای معرفی در ویترین)؛ با هر آپلودِ تازه دوباره شمرده می‌شود. */
+    public function pageCount(): int
+    {
+        $folder = trim((string) $this->folder_name);
+        if ($folder === '') {
+            return 0;
+        }
+        return (int) \Illuminate\Support\Facades\Cache::remember(
+            "book-pages:{$this->id}:{$this->json_version}",
+            now()->addDay(),
+            fn () => count(Storage::disk('local')->files("books/{$folder}/pages")),
+        );
     }
 
     public function category(): BelongsTo

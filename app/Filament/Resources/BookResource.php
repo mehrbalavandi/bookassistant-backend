@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\BookCategory;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,6 +52,35 @@ class BookResource extends Resource
                         ->minValue(0)->maxValue(100),
                 ]),
             ]),
+
+            // 🌟 SF-1: آنچه کاربرِ اپ پیش از دانلودِ نمونه یا خرید می‌بیند (صفحه‌ی جزئیاتِ کتاب).
+            // همه اختیاری؛ اپ هرچه را بیاید نشان می‌دهد و همه را برای حالتِ آفلاین نگه می‌دارد.
+            Section::make('معرفی در ویترینِ اپ')
+                ->description('جلد، توضیح و مشخصاتی که در صفحه‌ی جزئیاتِ کتاب در اپ دیده می‌شوند. دکمه‌ی «دریافت نمونه» فقط وقتی فعال است که محتوای نمونه آپلود شده باشد.')
+                ->schema([
+                    Grid::make(3)->schema([
+                        FileUpload::make('cover_image')
+                            ->label('جلدِ کتاب')
+                            ->image()
+                            ->disk('local')
+                            ->directory('covers')
+                            ->visibility('private')
+                            ->maxSize(3072)
+                            ->imagePreviewHeight('220')
+                            ->helperText('JPG/PNG/WebP، حداکثر ۳ مگابایت. نسبتِ پیشنهادی ۳ به ۴.')
+                            ->columnSpan(1),
+                        Grid::make(1)->schema([
+                            TextInput::make('author')->label('نویسنده')->maxLength(255),
+                            TextInput::make('publisher')->label('ناشر')->maxLength(255),
+                            TextInput::make('level')->label('سطح')->maxLength(50)
+                                ->helperText('مثال: Band 4–5 (A2–B1)'),
+                        ])->columnSpan(2),
+                    ]),
+                    Textarea::make('description')
+                        ->label('توضیحِ کتاب')
+                        ->rows(6)
+                        ->helperText('چند جمله درباره‌ی محتوا، مخاطب و ویژگی‌های کتاب. خطِ تازه در اپ هم خطِ تازه است.'),
+                ]),
 
             // 🌟 دسته و ترتیبِ نمایش: کتاب‌ها در سایت و اپ به ترتیبِ «شماره‌ی ردیف»
             // داخلِ دسته‌شان نشان داده می‌شوند، نه به ترتیبِ آپلود.
