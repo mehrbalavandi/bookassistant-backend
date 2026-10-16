@@ -140,6 +140,7 @@ class DeviceController extends Controller
             'platform' => 'nullable|string|max:16',
             'app_version' => 'nullable|string|max:32',
             'build_number' => 'nullable|integer|min:0',
+            'build_mode' => 'nullable|string|in:debug,profile,release',
             'os_version' => 'nullable|string|max:64',
             'model' => 'nullable|string|max:100',
         ]);

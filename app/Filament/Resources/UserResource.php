@@ -219,7 +219,10 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [UserResource\RelationManagers\DevicesRelationManager::class];
+        return [
+            UserResource\RelationManagers\DevicesRelationManager::class,
+            UserResource\RelationManagers\OrdersRelationManager::class, // 🌟 ADM-4
+        ];
     }
 
     public static function getPages(): array

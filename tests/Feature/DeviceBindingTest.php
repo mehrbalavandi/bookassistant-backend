@@ -154,6 +154,23 @@ class DeviceBindingTest extends TestCase
             ->assertJson(['reason' => 'release_cooldown']);
     }
 
+    public function test_random_fallback_id_upgrades_to_hardware_id_in_place(): void
+    {
+        // بارِ اول شناسه‌ی سخت‌افزاری در دسترس نبود (r1-…)، بعد هست (h1-…) ← همان ردیف.
+        $this->login('r1-0123456789abcdef', ['build_mode' => 'debug'])->assertOk();
+        $this->login('h1-device-aaaa', ['previous_device_id' => 'r1-0123456789abcdef', 'build_mode' => 'release'])
+            ->assertOk();
+        $rows = UserDevice::where('user_id', $this->user->id)->get();
+        $this->assertCount(1, $rows);
+        $this->assertSame('h1-device-aaaa', $rows[0]->device_id);
+        $this->assertSame('release', $rows[0]->build_mode);
+        $this->assertTrue($rows[0]->isActive());
+
+        // شناسه‌ی سخت‌افزاریِ دستگاهِ دیگر را نمی‌شود این‌طور تصاحب کرد.
+        $this->login('h1-device-bbbb', ['previous_device_id' => 'h1-device-aaaa'])->assertStatus(422);
+        $this->login('h1-device-bbbb')->assertStatus(409);
+    }
+
     public function test_old_app_versions_are_asked_to_update(): void
     {
         $this->postJson('/api/auth/otp/request', ['mobile' => '09121234567'])

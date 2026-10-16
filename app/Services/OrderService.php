@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Sms\SmsSender;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Shetabit\Multipay\Exceptions\InvalidPaymentException;
 use Shetabit\Multipay\Invoice;
@@ -154,6 +155,61 @@ class OrderService
             'reviewed_at' => now(),
         ])->save();
         $this->notify($order, 'order_rejected', [(string) $order->id]);
+    }
+
+    // ───────── 🌟 ADM-4: ویرایش و حذفِ سفارش توسطِ ادمین ─────────
+
+    /**
+     * ویرایشِ سفارش در پنل. تغییرِ وضعیت به «پرداخت‌شده» کتاب را فعال می‌کند (grant)؛ برگرداندن
+     * از «پرداخت‌شده» فقط وقتی کتاب را پس می‌گیرد که $revoke=true باشد و سفارشِ پرداخت‌شده‌ی
+     * دیگری برای همان کتاب نمانده باشد.
+     */
+    public function adminUpdate(Order $order, array $data, User $admin, bool $revoke = false, bool $notify = false): void
+    {
+        $wasPaid = $order->status === Order::PAID;
+        $order->fill(collect($data)->only([
+            'amount', 'status', 'method', 'card_tracking_code', 'card_last4', 'reference_id', 'admin_note',
+        ])->all());
+        $order->forceFill(['reviewed_by' => $admin->id, 'reviewed_at' => now()])->save();
+
+        if (! $wasPaid && $order->status === Order::PAID) {
+            $this->grant($order, $admin);
+            if ($notify) {
+                $this->notify($order, 'order_paid', [$order->book->title]);
+            }
+        } elseif ($wasPaid && $order->status !== Order::PAID && $revoke) {
+            $this->revokeBook($order);
+        }
+    }
+
+    /** حذفِ سفارش (و فایلِ رسیدش). با $revoke کتاب هم پس گرفته می‌شود (همان شرطِ adminUpdate). */
+    public function adminDelete(Order $order, bool $revoke = false): void
+    {
+        DB::transaction(function () use ($order, $revoke) {
+            if ($revoke && $order->status === Order::PAID) {
+                $this->revokeBook($order);
+            }
+            if ($order->receipt_path) {
+                Storage::disk('local')->delete($order->receipt_path);
+            }
+            $order->delete();
+        });
+    }
+
+    /**
+     * کتابِ این سفارش را از کاربر می‌گیرد، مگر سفارشِ پرداخت‌شده‌ی دیگری برای همان کتاب داشته
+     * باشد. false یعنی کتاب ماند.
+     */
+    public function revokeBook(Order $order): bool
+    {
+        $otherPaid = Order::where('user_id', $order->user_id)->where('book_id', $order->book_id)
+            ->where('status', Order::PAID)->whereKeyNot($order->id)->exists();
+        if ($otherPaid || ! $order->user) {
+            return false;
+        }
+        $order->user->purchasedBooks()->detach($order->book_id);
+
+        return true;
     }
 
     private function notify(Order $order, string $template, array $params): void

@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class UserDevice extends Model
 {
     protected $fillable = [
-        'user_id', 'device_id', 'name', 'platform', 'app_version', 'build_number',
+        'user_id', 'device_id', 'name', 'platform', 'app_version', 'build_number', 'build_mode',
         'os_version', 'model', 'last_ip', 'last_seen_at',
     ];
 
@@ -55,6 +55,25 @@ class UserDevice extends Model
         return trim($name !== '' ? "{$name} ({$platform})" : $platform) ?: 'دستگاهِ بی‌نام';
     }
 
+    /**
+     * 🌟 DEV-5: شناسه‌ی کوتاه برای نمایش (مثلاً «h1-3fa9c2»)، تا کاربر و ادمین ببینند دو ردیف
+     * واقعاً یک دستگاه‌اند یا نه. h1 = از سخت‌افزار، r1 = تصادفی (سخت‌افزار در دسترس نبود).
+     */
+    public function shortId(): string
+    {
+        return substr((string) $this->device_id, 0, 9);
+    }
+
+    /** نوعِ ساخت برای نمایش (فقط وقتی release نیست). */
+    public function buildLabel(): ?string
+    {
+        return match ($this->build_mode) {
+            'debug' => 'نسخه‌ی آزمایشی (debug)',
+            'profile' => 'profile',
+            default => null,
+        };
+    }
+
     /** شکلِ مشترکِ دستگاه برای اپ (فهرستِ دستگاه‌ها و پاسخِ سقفِ پُر). */
     public function toAppArray(?int $currentId = null): array
     {
@@ -67,6 +86,8 @@ class UserDevice extends Model
             'activated_at' => $this->activated_at?->toIso8601String(),
             'last_seen_at' => $this->last_seen_at?->toIso8601String(),
             'current' => $currentId !== null && $this->id === $currentId,
+            'short_id' => $this->shortId(),
+            'build_mode' => $this->build_mode,
         ];
     }
 }

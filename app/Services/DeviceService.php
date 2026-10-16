@@ -49,7 +49,9 @@ class DeviceService
             'model' => 'nullable|string|max:100',
             'app_version' => 'nullable|string|max:32',
             'build_number' => 'nullable|integer|min:0',
+            'build_mode' => 'nullable|string|in:debug,profile,release',
             'os_version' => 'nullable|string|max:64',
+            'previous_device_id' => ['nullable', 'string', 'max:64', 'regex:/^r1-[A-Za-z0-9]+$/'],
         ])->validate();
 
         return [
@@ -59,7 +61,9 @@ class DeviceService
             'model' => $data['model'] ?? null,
             'app_version' => $data['app_version'] ?? null,
             'build_number' => $data['build_number'] ?? null,
+            'build_mode' => $data['build_mode'] ?? null,
             'os_version' => $data['os_version'] ?? null,
+            'previous_device_id' => $data['previous_device_id'] ?? null,
         ];
     }
 
@@ -87,8 +91,24 @@ class DeviceService
             User::whereKey($user->id)->lockForUpdate()->first();
 
             $device = UserDevice::firstOrNew(['user_id' => $user->id, 'device_id' => $info['device_id']]);
+
+            // 🌟 DEV-5: همین دستگاه قبلاً با شناسه‌ی تصادفی (r1-…) ثبت شده بود، چون شناسه‌ی
+            // سخت‌افزاری در دسترس نبود؛ حالا هست. همان ردیف شناسه‌ی تازه می‌گیرد و جای دیگری از
+            // سقفِ دستگاه گرفته نمی‌شود. فقط r1 پذیرفته می‌شود: شناسه‌ی سخت‌افزاریِ دستگاهِ
+            // دیگر را نمی‌شود این‌طور «تصاحب» کرد.
+            $previous = $info['previous_device_id'] ?? null;
+            if ($previous && ! $device->isActive()) {
+                $old = UserDevice::where('user_id', $user->id)->where('device_id', $previous)->active()->first();
+                if ($old && ! $device->exists) {
+                    $old->device_id = $info['device_id'];
+                    $device = $old;
+                } elseif ($old) {
+                    $this->release($old, 'system');
+                }
+            }
+
             $device->fill(array_filter(
-                Arr::only($info, ['name', 'platform', 'model', 'app_version', 'build_number', 'os_version']),
+                Arr::only($info, ['name', 'platform', 'model', 'app_version', 'build_number', 'build_mode', 'os_version']),
                 fn ($v) => $v !== null && $v !== '',
             ));
 
@@ -118,6 +138,13 @@ class DeviceService
     public function release(UserDevice $device, string $by): void
     {
         $device->forceFill(['revoked_at' => now(), 'revoked_by' => $by])->save();
+    }
+
+    /** 🌟 DEV-5: حذفِ کاملِ ردیفِ دستگاه (ادمین). توکن‌هایش هم پاک می‌شوند. */
+    public function forget(UserDevice $device): void
+    {
+        PersonalAccessToken::where('user_device_id', $device->id)->delete();
+        $device->delete();
     }
 
     /** زمانی که کاربر دوباره می‌تواند خودش دستگاهی را آزاد کند؛ null = همین حالا. */

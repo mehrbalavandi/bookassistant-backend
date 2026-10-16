@@ -4,6 +4,8 @@ namespace App\Filament\Resources\UserResource\RelationManagers;
 
 use App\Models\UserDevice;
 use App\Services\DeviceService;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -11,9 +13,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * 🌟 DEV-2: دستگاه‌های یک کاربر در صفحه‌ی ویرایشِ کاربر.
- * ادمین هر دستگاهِ فعالی را «آزاد» می‌کند (بی‌محدودیتِ زمانی؛ در فاصله‌ی آزادسازیِ خودِ کاربر
- * حساب نمی‌شود). دستگاهِ آزادشده در اولین اتصال از حساب خارج و محتوای کاملِ کتاب‌هایش پاک می‌شود.
+ * 🌟 DEV-2/5: دستگاه‌های یک کاربر در صفحه‌ی ویرایشِ کاربر.
+ * - **آزادسازی:** دستگاهِ فعال از حساب جدا می‌شود (بی‌محدودیتِ زمانی؛ در فاصله‌ی آزادسازیِ خودِ
+ *   کاربر حساب نمی‌شود). در اولین اتصال از حساب خارج و محتوای کاملِ کتاب‌هایش پاک می‌شود.
+ * - **ویرایش:** نامِ دستگاه (همان که کاربر در «دستگاه‌های من» می‌بیند).
+ * - **حذف:** ردیف و نشست‌هایش کامل پاک می‌شود (مثلاً ردیف‌های قدیمیِ بی‌استفاده). اگر فعال بود،
+ *   مثلِ آزادسازی است ولی آن دستگاه دلیلِ خروج را نمی‌فهمد و محتوایش پاک نمی‌شود.
+ * - **شناسه:** شناسه‌ی کوتاه نشان می‌دهد دو ردیف واقعاً یک دستگاه‌اند یا نه. روی اندروید نسخه‌ی
+ *   debug (flutter run) و release شناسه‌ی جدا دارند؛ ستونِ «ساخت» همین را نشان می‌دهد.
  */
 class DevicesRelationManager extends RelationManager
 {
@@ -26,6 +33,15 @@ class DevicesRelationManager extends RelationManager
     public function isReadOnly(): bool
     {
         return false;
+    }
+
+    public function form(Form $form): Form
+    {
+        return $form->schema([
+            TextInput::make('name')->label('نامِ دستگاه')->maxLength(100)
+                ->helperText('همان که کاربر در «دستگاه‌های من» و پنجره‌ی سقفِ دستگاه می‌بیند.'),
+            TextInput::make('model')->label('مدل')->maxLength(100),
+        ]);
     }
 
     public function table(Table $table): Table
@@ -46,20 +62,27 @@ class DevicesRelationManager extends RelationManager
             })
             ->columns([
                 Tables\Columns\TextColumn::make('label')->label('دستگاه')
-                    ->state(fn (UserDevice $d) => $d->label()),
+                    ->state(fn (UserDevice $d) => $d->label())
+                    ->description(fn (UserDevice $d) => $d->buildLabel()),
                 Tables\Columns\TextColumn::make('status')->label('وضعیت')->badge()
                     ->state(fn (UserDevice $d) => match (true) {
                         $d->isActive() => 'فعال',
-                        $d->revoked_at !== null => $d->revoked_by === 'admin' ? 'آزادشده (ادمین)' : 'آزادشده (کاربر)',
+                        $d->revoked_at !== null => match ($d->revoked_by) {
+                            'admin' => 'آزادشده (ادمین)',
+                            'system' => 'جایگزین‌شده',
+                            default => 'آزادشده (کاربر)',
+                        },
                         default => 'ثبت‌نشده (نسخه‌ی قدیمی)',
                     })
                     ->color(fn (UserDevice $d) => $d->isActive() ? 'success' : 'gray'),
-                Tables\Columns\TextColumn::make('app_version')->label('نسخه‌ی اپ'),
+                Tables\Columns\TextColumn::make('short_id')->label('شناسه')
+                    ->state(fn (UserDevice $d) => $d->shortId())
+                    ->tooltip(fn (UserDevice $d) => $d->device_id)
+                    ->extraAttributes(['dir' => 'ltr', 'style' => 'font-family:monospace']),
+                Tables\Columns\TextColumn::make('app_version')->label('نسخه‌ی اپ')->placeholder('—'),
                 Tables\Columns\TextColumn::make('activated_at')->label('فعال از')->dateTime('Y-m-d H:i'),
                 Tables\Columns\TextColumn::make('last_seen_at')->label('آخرین بازدید')->since(),
                 Tables\Columns\TextColumn::make('revoked_at')->label('آزادسازی')->dateTime('Y-m-d H:i')->placeholder('—'),
-                Tables\Columns\TextColumn::make('device_id')->label('شناسه')->limit(14)
-                    ->tooltip(fn (UserDevice $d) => $d->device_id)->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
                 Tables\Actions\Action::make('release')
@@ -73,6 +96,32 @@ class DevicesRelationManager extends RelationManager
                     ->action(function (UserDevice $d) {
                         app(DeviceService::class)->release($d, 'admin');
                         Notification::make()->title('دستگاه آزاد شد.')->success()->send();
+                    }),
+                Tables\Actions\EditAction::make()->label('ویرایش')->modalHeading('ویرایشِ دستگاه'),
+                Tables\Actions\Action::make('forget')
+                    ->label('حذف')
+                    ->icon('heroicon-o-trash')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (UserDevice $d) => 'حذفِ «'.$d->label().'»')
+                    ->modalDescription(fn (UserDevice $d) => $d->isActive()
+                        ? 'این دستگاه فعال است. با حذف، جایش خالی و نشستش بسته می‌شود؛ ولی محتوای کتاب‌ها روی آن پاک نمی‌شود (برای آن «آزادسازی» را بزنید). ادامه؟'
+                        : 'ردیف و سابقه‌ی این دستگاه کامل پاک می‌شود.')
+                    ->action(function (UserDevice $d) {
+                        app(DeviceService::class)->forget($d);
+                        Notification::make()->title('دستگاه حذف شد.')->success()->send();
+                    }),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkAction::make('forgetInactive')
+                    ->label('حذفِ انتخاب‌شده‌ها')
+                    ->icon('heroicon-o-trash')
+                    ->requiresConfirmation()
+                    ->action(function ($records) {
+                        foreach ($records as $d) {
+                            app(DeviceService::class)->forget($d);
+                        }
+                        Notification::make()->title(count($records).' دستگاه حذف شد.')->success()->send();
                     }),
             ])
             ->paginated([10, 25]);

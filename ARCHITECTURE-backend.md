@@ -108,6 +108,16 @@ storage/app/private/books/{folder_name}/
 - **`getSettings` / `putSettings`:** یک JSON برای تنظیمات (`user_settings`).
 - ثبتِ دستگاه (`POST /devices`) به `DeviceController::touch` رفت؛ پایین‌تر، «دستگاه‌ها».
 
+**ویرایش و حذفِ سفارش (ADM-4):**
+- `OrderService::adminUpdate`:
+  - تغییرِ وضعیت به «پرداخت‌شده» `grant` را صدا می‌زند؛ پیامک اختیاری است.
+  - برگرداندن از «پرداخت‌شده» فقط با `revoke` کتاب را پس می‌گیرد.
+- `OrderService::adminDelete` فایلِ رسید را هم پاک می‌کند.
+- `OrderService::revokeBook` کتاب را نگه می‌دارد اگر سفارشِ پرداخت‌شده‌ی دیگری برای همان کتاب
+  باشد.
+- **پنل:** کنش‌های «ویرایش»/«حذف» در «سفارش‌ها» (`OrderResource::editAction/deleteAction`) و در
+  زبانه‌ی «سفارش‌ها»ی صفحه‌ی ویرایشِ کاربر (`OrdersRelationManager`).
+
 **`OrderController.php`** — خرید از اپ (PAY-2/3):
 - `options`: روش‌های فعال و مشخصاتِ کارت.
 - `store`: سفارش می‌سازد.
@@ -296,6 +306,14 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
     کاربر حساب نمی‌شود.
   - **خروج** دستگاه را آزاد نمی‌کند؛ عمداً، وگرنه حساب با خروج و ورود دست‌به‌دست می‌شد.
 - **سقف:** `users.max_devices`، وگرنه `DEVICE_LIMIT`. در پنل: «سقفِ دستگاه».
+- **DEV-5:**
+  - **ستون‌های تازه:** `user_devices.build_mode` (debug/profile/release) و شناسه‌ی کوتاه
+    (`shortId`) در اپ و پنل.
+  - **شناسه‌ی تصادفیِ قبلی:** ورود با `previous_device_id` (فقط `r1-`) ردیفِ فعالِ همان دستگاه
+    را به شناسه‌ی سخت‌افزاریِ تازه منتقل می‌کند.
+  - **پنل:** «ویرایش» (نام، مدل) و «حذف» (`DeviceService::forget`: ردیف و توکن‌هایش) کنارِ
+    «آزادسازی».
+  - **`revoked_by=system`:** «جایگزین‌شده»؛ در فاصله‌ی ۳۰روزه‌ی کاربر حساب نمی‌شود.
 - **مجوزِ آفلاین** (`LicenseService`):
   - JSONِ `{v, uid, did, books, iat, exp}` با Ed25519 (sodium) امضا می‌شود. کلیدِ خصوصی در
     `LICENSE_SIGNING_KEY` است و با `php artisan license:keygen` ساخته می‌شود. کلیدِ عمومی در

@@ -5,7 +5,12 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Services\OrderService;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -18,6 +23,9 @@ use Illuminate\Support\HtmlString;
  * 🌟 PAY-4: سفارش‌ها در پنل. همه‌ی تلاش‌های خرید (درگاه و کارت‌به‌کارت) با وضعیت؛
  * رسیدهای کارت‌به‌کارت با «تأیید» (کتاب فعال می‌شود و پیامک می‌رود) یا «رد» (با دلیل).
  * شمارِ رسیدهای منتظرِ بررسی روی منو دیده می‌شود.
+ * 🌟 ADM-4: «ویرایش» (مبلغ، وضعیت، روش، کدهای پیگیری، یادداشت) و «حذف»؛ هر دو در صفحه‌ی ویرایشِ
+ * کاربر هم هست (OrdersRelationManager). پرداخت‌شده‌کردن کتاب را فعال می‌کند؛ برگرداندن یا حذفِ
+ * سفارشِ پرداخت‌شده فقط با تیکِ «کتاب پس گرفته شود» دسترسی را برمی‌دارد.
  */
 class OrderResource extends Resource
 {
@@ -126,7 +134,86 @@ class OrderResource extends Resource
                         app(OrderService::class)->reject($o, Auth::user(), $data['reason']);
                         Notification::make()->title('سفارش رد شد.')->warning()->send();
                     }),
+
+                static::editAction(),
+                static::deleteAction(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkAction::make('deleteOrders')
+                    ->label('حذفِ انتخاب‌شده‌ها')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->form([
+                        Toggle::make('revoke')->label('کتابِ سفارش‌های پرداخت‌شده هم از کاربران گرفته شود')->default(false),
+                    ])
+                    ->action(function ($records, array $data) {
+                        foreach ($records as $o) {
+                            app(OrderService::class)->adminDelete($o, (bool) $data['revoke']);
+                        }
+                        Notification::make()->title(count($records).' سفارش حذف شد.')->success()->send();
+                    }),
             ]);
+    }
+
+    /** 🌟 ADM-4: ویرایشِ سفارش (جدولِ سفارش‌ها و صفحه‌ی ویرایشِ کاربر). */
+    public static function editAction(): Tables\Actions\Action
+    {
+        return Tables\Actions\Action::make('editOrder')
+            ->label('ویرایش')
+            ->icon('heroicon-o-pencil-square')
+            ->modalHeading(fn (Order $o) => 'ویرایشِ سفارشِ '.$o->id)
+            ->fillForm(fn (Order $o) => $o->only([
+                'amount', 'status', 'method', 'card_tracking_code', 'card_last4', 'reference_id', 'admin_note',
+            ]))
+            ->form(fn (Order $o) => [
+                Grid::make(2)->schema([
+                    TextInput::make('amount')->label('مبلغ (تومان)')->numeric()->minValue(0)->required(),
+                    Select::make('method')->label('روش')->required()
+                        ->options([Order::METHOD_GATEWAY => 'درگاه', Order::METHOD_CARD => 'کارت‌به‌کارت']),
+                    Select::make('status')->label('وضعیت')->options(Order::STATUS_LABELS)->required()->live(),
+                    TextInput::make('reference_id')->label('کدِ پیگیریِ درگاه')->maxLength(191),
+                    TextInput::make('card_tracking_code')->label('کدِ پیگیریِ کارت')->maxLength(64),
+                    TextInput::make('card_last4')->label('۴ رقمِ آخرِ کارت')->maxLength(4),
+                ]),
+                Textarea::make('admin_note')->label('یادداشت / دلیلِ رد (کاربر می‌بیند)')->rows(2)->maxLength(500),
+                Toggle::make('notify')->label('پیامکِ «کتاب فعال شد» به کاربر')
+                    ->visible(fn (Get $get) => $o->status !== Order::PAID && $get('status') === Order::PAID),
+                Toggle::make('revoke')->label('کتاب از کاربر پس گرفته شود')
+                    ->helperText('فقط اگر کاربر سفارشِ پرداخت‌شده‌ی دیگری برای همین کتاب نداشته باشد.')
+                    ->visible(fn (Get $get) => $o->status === Order::PAID && $get('status') !== Order::PAID),
+            ])
+            ->action(function (Order $o, array $data) {
+                app(OrderService::class)->adminUpdate(
+                    $o,
+                    $data,
+                    Auth::user(),
+                    revoke: (bool) ($data['revoke'] ?? false),
+                    notify: (bool) ($data['notify'] ?? false),
+                );
+                Notification::make()->title('سفارش ذخیره شد.')->success()->send();
+            });
+    }
+
+    /** 🌟 ADM-4: حذفِ سفارش (و فایلِ رسید). */
+    public static function deleteAction(): Tables\Actions\Action
+    {
+        return Tables\Actions\Action::make('deleteOrder')
+            ->label('حذف')
+            ->icon('heroicon-o-trash')
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading(fn (Order $o) => 'حذفِ سفارشِ '.$o->id)
+            ->modalDescription('سفارش و تصویرِ رسیدش برای همیشه پاک می‌شوند.')
+            ->form(fn (Order $o) => $o->status === Order::PAID ? [
+                Toggle::make('revoke')->label('کتاب هم از کاربر پس گرفته شود')
+                    ->helperText('خاموش: کاربر کتاب را نگه می‌دارد (فقط سابقه‌ی سفارش پاک می‌شود).')
+                    ->default(false),
+            ] : [])
+            ->action(function (Order $o, array $data) {
+                app(OrderService::class)->adminDelete($o, (bool) ($data['revoke'] ?? false));
+                Notification::make()->title('سفارش حذف شد.')->success()->send();
+            });
     }
 
     public static function getPages(): array
