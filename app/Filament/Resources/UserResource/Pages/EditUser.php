@@ -19,6 +19,25 @@ class EditUser extends EditRecord
         ];
     }
 
+    /**
+     * 🌟 ADM-4: فرم و جدول‌های «دستگاه‌ها» و «سفارش‌ها» به‌صورتِ زبانه‌های بالای صفحه، نه زیرِ
+     * فرم (که پیدا نمی‌شدند). از فهرستِ کاربران، «سفارش‌ها» مستقیم زبانه‌ی سفارش‌ها را باز می‌کند.
+     */
+    public function hasCombinedRelationManagerTabsWithContent(): bool
+    {
+        return true;
+    }
+
+    public function getContentTabLabel(): ?string
+    {
+        return 'مشخصات';
+    }
+
+    public function getContentTabIcon(): ?string
+    {
+        return 'heroicon-o-user';
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         return self::withDisplayName($data, $this->record->name);

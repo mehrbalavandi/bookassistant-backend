@@ -143,7 +143,7 @@ class UserResource extends Resource
         return $table
             ->defaultSort('id', 'desc')
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->withCount(['purchasedBooks', 'studyItems' => fn ($s) => $s->where('deleted', false), 'devices' => fn ($d) => $d->active()])
+                ->withCount(['purchasedBooks', 'orders', 'studyItems' => fn ($s) => $s->where('deleted', false), 'devices' => fn ($d) => $d->active()])
                 ->with(['devices' => fn ($d) => $d->latest('last_seen_at')]))
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('#')->sortable(),
@@ -172,6 +172,12 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->label('ویرایش'),
+                // 🌟 ADM-4: مستقیم به زبانه‌ی «سفارش‌ها»ی همین کاربر (ویرایش/حذفِ سفارش).
+                Tables\Actions\Action::make('orders')
+                    ->label(fn (User $u) => 'سفارش‌ها'.($u->orders_count ? " ({$u->orders_count})" : ''))
+                    ->icon('heroicon-o-banknotes')
+                    ->color('gray')
+                    ->url(fn (User $u) => static::getUrl('edit', ['record' => $u, 'activeRelationManager' => 1])),
                 static::configureDelete(Tables\Actions\Action::make('deleteUser')),
                 Tables\Actions\RestoreAction::make()->label('فعال‌سازیِ دوباره'),
             ]);

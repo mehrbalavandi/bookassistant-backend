@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\OrderResource\Pages\ListOrders;
+use App\Filament\Resources\UserResource;
 use App\Filament\Resources\UserResource\Pages\EditUser;
+use App\Filament\Resources\UserResource\Pages\ListUsers;
 use App\Filament\Resources\UserResource\RelationManagers\DevicesRelationManager;
 use App\Filament\Resources\UserResource\RelationManagers\OrdersRelationManager;
 use App\Models\Book;
@@ -113,5 +115,18 @@ class AdminOrdersAndDevicesTest extends TestCase
             ->assertHasNoTableActionErrors();
         $this->assertNull(UserDevice::find($d->id));
         $this->assertSame(0, PersonalAccessToken::count());
+    }
+
+    public function test_user_page_has_tabs_and_list_links_to_orders(): void
+    {
+        $this->order(Order::PAID);
+        Livewire::test(EditUser::class, ['record' => $this->user->id])->assertSuccessful()
+            ->assertSee('مشخصات')->assertSee('سفارش‌ها')->assertSee('دستگاه‌ها');
+        Livewire::test(EditUser::class, ['record' => $this->user->id])
+            ->set('activeRelationManager', '1')->assertSuccessful();
+
+        Livewire::test(ListUsers::class)->assertSuccessful()
+            ->assertTableActionHasUrl('orders', UserResource::getUrl('edit', ['record' => $this->user, 'activeRelationManager' => 1]), $this->user)
+            ->assertSee('سفارش‌ها (1)');
     }
 }

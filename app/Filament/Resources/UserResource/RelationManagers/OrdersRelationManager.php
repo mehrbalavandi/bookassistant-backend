@@ -5,6 +5,7 @@ namespace App\Filament\Resources\UserResource\RelationManagers;
 use App\Filament\Resources\OrderResource;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * 🌟 ADM-4: سفارش‌های همین کاربر در صفحه‌ی ویرایشِ کاربر — همان جدول و کنش‌های «سفارش‌ها»
@@ -17,6 +18,15 @@ class OrdersRelationManager extends RelationManager
     protected static ?string $title = 'سفارش‌ها';
 
     protected static ?string $modelLabel = 'سفارش';
+
+
+    protected static ?string $icon = 'heroicon-o-banknotes';
+
+    /** شمارِ سفارش‌ها روی زبانه. */
+    public static function getBadge(Model $ownerRecord, string $pageClass): ?string
+    {
+        return (string) ($ownerRecord->orders()->count() ?: '') ?: null;
+    }
 
     public function isReadOnly(): bool
     {
