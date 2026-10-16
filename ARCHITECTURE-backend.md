@@ -51,7 +51,7 @@ storage/app/private/books/{folder_name}/
 
 | فایل | محتوا |
 |---|---|
-| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/cover`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
+| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/cover`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. `/auth/device/replace` (جایگزینیِ دستگاه با بلیت). پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices` (GET/POST)، `/devices/{device}` (DELETE)، `/license`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
 | `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود (ایمیل و `/login/otp`)، `checkout/{book}` (سفارش می‌سازد)، `/pay/{order}` (لینکِ امضاشده ← درگاه)، `/payment/callback/{order}` (برگشت از درگاه، بی‌CSRF)، `admin.book-asset` و `admin.order-receipt` (فقط ادمین)، و `/app` + `/app/download/{platform}`. |
 
 ### API (`app/Http/Controllers/Api/`)
@@ -106,7 +106,7 @@ storage/app/private/books/{folder_name}/
   - پاسخ = تغییرهای از `since_ms` به بعد (`server_ms`)، با ۱۰ ثانیه هم‌پوشانی.
   - `payload` همان JSONِ اپ است؛ ستون‌های جدا برای گزارش.
 - **`getSettings` / `putSettings`:** یک JSON برای تنظیمات (`user_settings`).
-- **`touchDevice`:** دستگاه‌ها (`user_devices`) و `users.last_seen_at`.
+- ثبتِ دستگاه (`POST /devices`) به `DeviceController::touch` رفت؛ پایین‌تر، «دستگاه‌ها».
 
 **`OrderController.php`** — خرید از اپ (PAY-2/3):
 - `options`: روش‌های فعال و مشخصاتِ کارت.
@@ -261,6 +261,54 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
   می‌کند.
 
 تست‌ها: `tests/Feature/OtpAuthTest.php`، `BackupSyncTest.php`، `OrderFlowTest.php`.
+
+### دستگاه‌ها و مجوزِ آفلاین (DEV-1..4)
+
+**هدف:** هر حساب فقط روی دستگاه‌های ثبت‌شده‌اش کار کند (پیش‌فرض ۱ دستگاه).
+
+- **شناسه‌ی دستگاه:** اپ آن را از سخت‌افزار می‌سازد (sha256ِ ANDROID_ID یا MachineGuid؛
+  `h1-…`) و در هر درخواست در هدرِ `X-Device-Id` می‌فرستد.
+- **ورود** (`OtpAuthController::verify`، `AuthController::login/register`) از
+  `DeviceService::signIn` می‌گذرد:
+  - **جای خالی هست:** دستگاه فعال می‌شود (`user_devices.activated_at`). توکن با
+    `personal_access_tokens.user_device_id` به آن گره می‌خورد و توکن‌های قبلیِ همان دستگاه
+    پاک می‌شوند. پاسخ `license` را هم دارد.
+  - **سقف پر است:** ۴۰۹ `device_limit` با دستگاه‌های فعال، `can_release`،
+    `next_release_at` و یک **بلیت** (رمزشده با APP_KEY، ۱۰ دقیقه). با بلیت،
+    `POST /api/auth/device/replace` یکی را آزاد و این دستگاه را وارد می‌کند، بی‌کدِ تازه.
+  - **بی‌`device_id` (نسخه‌ی قدیمی):** ۴۲۶ `update_required`، پیش از فرستادنِ پیامک
+    (`otp/request` هم چک می‌کند).
+- **هر درخواست:** `Sanctum::authenticateAccessTokensUsing` (در `AppServiceProvider`) →
+  `DeviceService::tokenAllowed`. روی همه‌ی مسیرها اجرا می‌شود، حتی مسیرهای عمومی‌ای که
+  `auth('sanctum')->user()` را می‌خوانند (`/books`، دانلودها). توکن رد می‌شود اگر:
+  - دستگاهش آزاد شده باشد (`device_revoked`؛ توکن پاک می‌شود)،
+  - هدر با دستگاه نخواند (`device_mismatch`، یعنی توکنِ کپی‌شده؛ پاک می‌شود)،
+  - هدر نباشد (`device_header_missing`؛ توکن می‌ماند)،
+  - بی‌دستگاه باشد و `require_binding` روشن (`unbound`).
+
+  دلیل در `request()->attributes['device_denied']` است. ۴۰۱ِ API آن را در `reason` برمی‌گرداند
+  (`bootstrap/app.php`) و `GET /api/books` در `session`. اپ برای `device_revoked` و
+  `device_mismatch` محتوای کامل را پاک می‌کند.
+- **آزادسازی** (`DeviceService::release`): `revoked_at` و `revoked_by` (`user` | `admin`).
+  - **کاربر:** هر `release_cooldown_days` روز یک‌بار (`nextSelfReleaseAt`)، از ۴۰۹ِ ورود یا
+    `DELETE /api/devices/{id}`.
+  - **ادمین:** همیشه، از کاربران ← ویرایش ← «دستگاه‌ها» (`DevicesRelationManager`). در فاصله‌ی
+    کاربر حساب نمی‌شود.
+  - **خروج** دستگاه را آزاد نمی‌کند؛ عمداً، وگرنه حساب با خروج و ورود دست‌به‌دست می‌شد.
+- **سقف:** `users.max_devices`، وگرنه `DEVICE_LIMIT`. در پنل: «سقفِ دستگاه».
+- **مجوزِ آفلاین** (`LicenseService`):
+  - JSONِ `{v, uid, did, books, iat, exp}` با Ed25519 (sodium) امضا می‌شود. کلیدِ خصوصی در
+    `LICENSE_SIGNING_KEY` است و با `php artisan license:keygen` ساخته می‌شود. کلیدِ عمومی در
+    اپ است.
+  - با ورود، `GET /books`، `POST /devices` و `GET /license` صادر می‌شود؛ فقط برای دستگاهِ
+    فعال. اعتبار `LICENSE_DAYS`، پیش‌فرض ۳۰ روز.
+  - اپ نسخه‌ی کامل را فقط با مجوزِ معتبرِ همین دستگاه و کاربر باز می‌کند. پس دستگاهِ آزادشده
+    حتی اگر آنلاین نشود، حداکثر بعد از این مدت قفل می‌شود.
+- **دوره‌ی انتقال:** `DEVICE_BINDING_REQUIRED=false`:
+  - نسخه‌های قدیمیِ اپ هنوز وارد می‌شوند و توکنِ بی‌دستگاه کار می‌کند.
+  - اپِ تازه با `session.bound=false` یک‌بار خارج می‌شود تا دستگاهش ثبت شود.
+  - بعد از انتشارِ اجباریِ نسخه‌ی تازه، `true`.
+- **تست‌ها:** `tests/Feature/DeviceBindingTest.php`.
 
 ### میدل‌ویرها
 

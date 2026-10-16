@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Book;
+use App\Services\DeviceService;
+use App\Services\LicenseService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
@@ -48,12 +50,37 @@ class BookController extends Controller
         $books = Book::sortForCatalog($books);
 
         $purchasedBookIds = [];
+        // 🌟 DEV-1..4: وضعیتِ نشست و مجوزِ آفلاینِ همین دستگاه. توکنی که دستگاهش آزاد شده یا
+        // از دستگاهِ دیگری آمده این‌جا کاربری برنمی‌گرداند (DeviceService::tokenAllowed)؛
+        // session.reason به اپ می‌گوید چرا، تا خارج شود و در صورتِ لزوم محتوا را پاک کند.
+        $session = null;
+        $license = null;
 
         if ($request->bearerToken()) {
             /** @var \App\Models\User $user */
             $user = auth('sanctum')->user();
             if ($user) {
                 $purchasedBookIds = $user->purchasedBooks()->pluck('books.id')->toArray();
+                if ($device = app(DeviceService::class)->current($request)) {
+                    $session = ['valid' => true, 'bound' => true];
+                    $license = app(LicenseService::class)->issue($user, $device);
+                } else {
+                    // توکنِ قدیمیِ بی‌دستگاه (فقط در دوره‌ی انتقال پذیرفته می‌شود): اپِ تازه با
+                    // bound=false یک‌بار خارج می‌شود تا با ورودِ دوباره دستگاهش ثبت شود و مجوز بگیرد.
+                    $session = [
+                        'valid' => true,
+                        'bound' => false,
+                        'reason' => 'unbound',
+                        'message' => DeviceService::deniedMessage('unbound'),
+                    ];
+                }
+            } else {
+                $reason = $request->attributes->get(DeviceService::DENIED_ATTRIBUTE) ?? 'invalid_token';
+                $session = [
+                    'valid' => false,
+                    'reason' => $reason,
+                    'message' => DeviceService::deniedMessage($reason),
+                ];
             }
         }
 
@@ -84,10 +111,12 @@ class BookController extends Controller
             return $book;
         });
 
-        return response()->json([
+        return response()->json(array_filter([
             'success' => true,
-            'data' => $books
-        ], 200);
+            'data' => $books,
+            'session' => $session,
+            'license' => $license,
+        ], fn ($v) => $v !== null), 200);
     }
 
     // 🌟 SF-1: جلدِ کتاب (عمومی). نشانی نسخه‌دار است (?v=)، پس کشِ طولانی بی‌خطر است.
@@ -125,10 +154,12 @@ class BookController extends Controller
         // دریافت کتاب‌های کاربر به همراه فیلدهای ضروری
         $books = $user->purchasedBooks()->select('books.id', 'title')->get();
 
-        return response()->json([
+        return response()->json(array_filter([
             'success' => true,
-            'data' => $books
-        ], 200);
+            'data' => $books,
+            'session' => $session,
+            'license' => $license,
+        ], fn ($v) => $v !== null), 200);
     }
 
     public function download(Request $request, Book $book)
@@ -160,7 +191,10 @@ class BookController extends Controller
             /** @var \App\Models\User $user */
             $user = auth('sanctum')->user();
 
-            if (!$user || !$user->purchasedBooks()->where('books.id', $book->id)->exists()) {
+            if (!$user) {
+                return $this->sessionDenied($request);
+            }
+            if (!$user->purchasedBooks()->where('books.id', $book->id)->exists()) {
                 return response()->json(['message' => 'شما این کتاب را خریداری نکرده‌اید.'], 403);
             }
         }
@@ -195,11 +229,25 @@ class BookController extends Controller
         /** @var \App\Models\User $user */
         $user = auth('sanctum')->user();
 
-        if (!$user || !$user->purchasedBooks()->where('books.id', $book->id)->exists()) {
+        if (!$user) {
+            return $this->sessionDenied($request);
+        }
+        if (!$user->purchasedBooks()->where('books.id', $book->id)->exists()) {
             return response()->json(['message' => 'شما این کتاب را خریداری نکرده‌اید.'], 403);
         }
 
         return null;
+    }
+
+    /// 🌟 DEV-1: توکن هست ولی پذیرفته نشد (دستگاهِ آزادشده، توکنِ کپی‌شده، توکنِ قدیمی، …).
+    private function sessionDenied(Request $request)
+    {
+        $reason = $request->attributes->get(DeviceService::DENIED_ATTRIBUTE) ?? 'invalid_token';
+
+        return response()->json([
+            'message' => DeviceService::deniedMessage($reason),
+            'reason' => $reason,
+        ], 401);
     }
 
     /// نامِ آرشیو شاملِ شماره‌ی نسخه‌هاست — یعنی با هر آپلودِ جدید (که نسخه‌ها

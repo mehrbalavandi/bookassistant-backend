@@ -60,7 +60,7 @@ class AdminUserManagementTest extends TestCase
         $this->assertTrue(Hash::check('1', $u->password));
 
         // ورودِ ایمیلی با همان رمزِ یک‌رقمی
-        $this->postJson('/api/login', ['email' => 'm@example.com', 'password' => '1'])->assertOk();
+        $this->postJson('/api/login', ['device_id' => 'test-device-0001', 'email' => 'm@example.com', 'password' => '1'])->assertOk();
     }
 
     public function test_empty_password_keeps_current_and_invalid_mobile_rejected(): void
@@ -97,7 +97,7 @@ class AdminUserManagementTest extends TestCase
         $this->assertDatabaseHas('study_items', ['user_id' => $this->user->id]);
         $this->assertDatabaseCount('personal_access_tokens', 0);
 
-        $this->postJson('/api/auth/otp/request', ['mobile' => '09121234567'])->assertForbidden();
+        $this->postJson('/api/auth/otp/request', ['device_id' => 'test-device-0001', 'mobile' => '09121234567'])->assertForbidden();
 
         // بازگرداندن
         Livewire::test(ListUsers::class, ['tableFilters' => ['trashed' => ['value' => 1]]])
@@ -125,7 +125,7 @@ class AdminUserManagementTest extends TestCase
         Storage::disk('local')->assertMissing('receipts/'.$this->user->id.'/r.jpg');
 
         // همان شماره دوباره می‌تواند ثبت‌نام کند
-        $this->postJson('/api/auth/otp/request', ['mobile' => '09121234567'])->assertOk();
+        $this->postJson('/api/auth/otp/request', ['device_id' => 'test-device-0001', 'mobile' => '09121234567'])->assertOk();
     }
 
     public function test_panel_shows_project_brand_not_filament(): void

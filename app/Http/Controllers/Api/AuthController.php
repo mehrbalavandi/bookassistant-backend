@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DeviceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -12,9 +13,15 @@ class AuthController extends Controller
 {
     // قانونِ رمز در App\Support\PasswordRules (مشترک با ثبت‌نامِ سایت).
 
+    // 🌟 DEV-1: ورود هم مثلِ ورودِ پیامکی دستگاه را ثبت می‌کند و به سقفِ دستگاه پایبند است.
+    public function __construct(private readonly DeviceService $devices) {}
+
     // ۱. متد ثبت‌نام کاربر جدید از طریق اپلیکیشن فلاتر
     public function register(Request $request)
     {
+        if ($legacy = $this->devices->legacyRejection($request)) {
+            return $legacy;
+        }
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users|max:255',
@@ -28,23 +35,16 @@ class AuthController extends Controller
             'is_admin' => false, // کاربران اپلیکیشن به صورت پیش‌فرض ادمین نیستند
         ]);
 
-        // ایجاد توکن برای کاربر تازه‌وارد
-        $token = $user->createToken('flutter-app-token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'ثبت‌نام با موفقیت انجام شد.',
-            'token' => $token,
-            'user' => [
-                'name' => $user->name,
-                'email' => $user->email,
-            ]
-        ], 201);
+        // توکنِ وابسته به همین دستگاه (DEV-1)
+        return $this->devices->signIn($user, $this->devices->deviceInfo($request), 'ثبت‌نام با موفقیت انجام شد.', 201);
     }
 
     // ۲. متد ورود (Login) کاربران قدیمی
     public function login(Request $request)
     {
+        if ($legacy = $this->devices->legacyRejection($request)) {
+            return $legacy;
+        }
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -60,22 +60,8 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // 💡 ایده برای آینده (بررسی وضعیت اشتراک):
-        // اگر فیلدی مثل has_premium در دیتابیس دارید، می‌توانید اینجا چک کنید.
-
-        // ایجاد توکن جدید برای این نشست (Session)
-        $token = $user->createToken('flutter-app-token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'ورود با موفقیت انجام شد.',
-            'token' => $token,
-            'user' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'is_admin' => $user->is_admin, // فلاتر متوجه شود این کاربر ادمین است یا خیر
-            ]
-        ]);
+        // توکنِ وابسته به همین دستگاه + مجوزِ آفلاین، یا ۴۰۹ِ سقفِ دستگاه (DEV-1..4)
+        return $this->devices->signIn($user, $this->devices->deviceInfo($request), 'ورود با موفقیت انجام شد.');
     }
 
     // ۳. متد خروج (Logout) و باطل کردن توکن

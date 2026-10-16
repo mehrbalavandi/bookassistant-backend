@@ -108,6 +108,17 @@ class UserResource extends Resource
                     ->helperText('افزودنِ کتاب این‌جا = فعال‌سازیِ دستی (بدونِ سفارش). سابقه‌ی پرداخت‌ها در «سفارش‌ها» است.'),
             ]),
 
+            // 🌟 DEV-2: سقفِ دستگاه. فهرستِ دستگاه‌ها و «آزادسازی» در پایینِ صفحه‌ی ویرایش است.
+            Section::make('دستگاه‌ها')->schema([
+                TextInput::make('max_devices')
+                    ->label('سقفِ دستگاه')
+                    ->numeric()
+                    ->minValue(1)
+                    ->maxValue(20)
+                    ->placeholder(fn () => (string) config('devices.max_per_user', 1))
+                    ->helperText(fn () => 'خالی = پیش‌فرض ('.config('devices.max_per_user', 1).'). مثلاً ۲ برای کسی که هم گوشی و هم کامپیوتر دارد.'),
+            ]),
+
             Section::make('سابقه')
                 ->visible(fn (string $operation) => $operation === 'edit')
                 ->columns(3)
@@ -120,9 +131,9 @@ class UserResource extends Resource
                         ->content(fn (?User $record) => $record?->studyItems()->where('deleted', false)->count()),
                     Placeholder::make('orders')->label('سفارش‌ها')
                         ->content(fn (?User $record) => $record?->orders()->count()),
-                    Placeholder::make('devices')->label('دستگاه‌ها')
-                        ->content(fn (?User $record) => $record?->devices()
-                            ->get()->map(fn ($d) => trim($d->platform.' '.$d->app_version))->unique()->join('، ') ?: '—'),
+                    Placeholder::make('devices')->label('دستگاه‌های فعال')
+                        ->content(fn (?User $record) => $record?->devices()->active()
+                            ->get()->map(fn ($d) => $d->label())->join('، ') ?: '—'),
                 ]),
         ]);
     }
@@ -132,7 +143,7 @@ class UserResource extends Resource
         return $table
             ->defaultSort('id', 'desc')
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->withCount(['purchasedBooks', 'studyItems' => fn ($s) => $s->where('deleted', false), 'devices'])
+                ->withCount(['purchasedBooks', 'studyItems' => fn ($s) => $s->where('deleted', false), 'devices' => fn ($d) => $d->active()])
                 ->with(['devices' => fn ($d) => $d->latest('last_seen_at')]))
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('#')->sortable(),
@@ -145,7 +156,7 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('purchased_books_count')->label('خرید')->sortable(),
                 Tables\Columns\TextColumn::make('study_items_count')->label('مرور')->sortable(),
-                Tables\Columns\TextColumn::make('devices_count')->label('دستگاه'),
+                Tables\Columns\TextColumn::make('devices_count')->label('دستگاهِ فعال'),
                 Tables\Columns\TextColumn::make('app_version')->label('نسخه‌ی اپ')
                     ->state(fn (User $u) => ($d = $u->devices->first()) ? trim($d->platform.' '.$d->app_version) : null),
                 Tables\Columns\TextColumn::make('last_seen_at')->label('آخرین بازدید')->since()->sortable(),
@@ -204,6 +215,11 @@ class UserResource extends Resource
                     Notification::make()->title('حساب غیرفعال شد؛ داده‌ها نگه داشته شد.')->success()->send();
                 }
             });
+    }
+
+    public static function getRelations(): array
+    {
+        return [UserResource\RelationManagers\DevicesRelationManager::class];
     }
 
     public static function getPages(): array

@@ -2,6 +2,7 @@
 
 use \App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OtpAuthController;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,8 @@ Route::get('/books/{book}/download-zip', [BookController::class, 'downloadZip'])
 // 🌟 AUTH-1/2: ورود و ثبت‌نام با موبایل و کدِ پیامکی (با سقفِ درخواست، AppServiceProvider)
 Route::post('/auth/otp/request', [OtpAuthController::class, 'request'])->middleware('throttle:otp-request');
 Route::post('/auth/otp/verify', [OtpAuthController::class, 'verify'])->middleware('throttle:otp-verify');
+// 🌟 DEV-2: سقفِ دستگاه پر بود ← با بلیتِ همان پاسخ یکی آزاد و این دستگاه وارد شود.
+Route::post('/auth/device/replace', [DeviceController::class, 'replace'])->middleware('throttle:otp-verify');
 // 🌟 PAY-2/3: روش‌های پرداختِ فعال (عمومی؛ اپ پیش از ورود هم می‌تواند نشان دهد)
 Route::get('/shop/options', [OrderController::class, 'options']);
 
@@ -45,7 +48,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/backup/study/sync', [BackupController::class, 'syncStudy'])->middleware('throttle:60,1');
     Route::get('/backup/settings', [BackupController::class, 'getSettings']);
     Route::put('/backup/settings', [BackupController::class, 'putSettings'])->middleware('throttle:30,1');
-    Route::post('/devices', [BackupController::class, 'touchDevice'])->middleware('throttle:30,1');
+    // 🌟 DEV-1..4: دستگاه‌ها و مجوزِ آفلاین (POST /devices همان ثبتِ BK-3 است و حالا مجوز را هم تمدید می‌کند)
+    Route::post('/devices', [DeviceController::class, 'touch'])->middleware('throttle:30,1');
+    Route::get('/devices', [DeviceController::class, 'index']);
+    Route::delete('/devices/{device}', [DeviceController::class, 'destroy'])->whereNumber('device')->middleware('throttle:10,1');
+    Route::get('/license', [DeviceController::class, 'license'])->middleware('throttle:30,1');
 
     // 🌟 PAY-2/3: سفارش‌ها
     Route::get('/orders', [OrderController::class, 'index']);

@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\StudyItem;
-use App\Models\UserDevice;
 use App\Models\UserSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -130,29 +129,5 @@ class BackupController extends Controller
         }
 
         return response()->json(['success' => true, 'data' => $s->data, 'updated' => $s->client_updated_ms]);
-    }
-
-    /**
-     * POST /api/devices {device_id, platform, app_version, build_number, os_version, model}
-     * (BK-3) — هر بار که اپ با حسابِ واردشده باز می‌شود.
-     */
-    public function touchDevice(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'device_id' => 'required|string|max:64',
-            'platform' => 'nullable|string|max:16',
-            'app_version' => 'nullable|string|max:32',
-            'build_number' => 'nullable|integer|min:0',
-            'os_version' => 'nullable|string|max:64',
-            'model' => 'nullable|string|max:100',
-        ]);
-        $user = $request->user();
-        UserDevice::updateOrCreate(
-            ['user_id' => $user->id, 'device_id' => $data['device_id']],
-            array_merge($data, ['last_ip' => $request->ip(), 'last_seen_at' => now()]),
-        );
-        $user->forceFill(['last_seen_at' => now()])->save();
-
-        return response()->json(['success' => true]);
     }
 }

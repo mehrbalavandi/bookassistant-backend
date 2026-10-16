@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DeviceService;
 use App\Services\OtpService;
 use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,10 @@ use Illuminate\Http\Request;
  */
 class OtpAuthController extends Controller
 {
-    public function __construct(private readonly OtpService $otp) {}
+    public function __construct(
+        private readonly OtpService $otp,
+        private readonly DeviceService $devices,
+    ) {}
 
     public function request(Request $request): JsonResponse
     {
@@ -30,6 +34,11 @@ class OtpAuthController extends Controller
         }
         if (User::onlyTrashed()->where('mobile', $mobile)->exists()) {
             return $this->deactivated();
+        }
+        // 🌟 DEV-1: نسخه‌ی قدیمیِ اپ (بی‌شناسه‌ی دستگاه) همین‌جا پیامِ «به‌روز کنید» می‌گیرد،
+        // پیش از اینکه پیامکی فرستاده شود.
+        if ($legacy = $this->devices->legacyRejection($request)) {
+            return $legacy;
         }
 
         try {
@@ -75,6 +84,11 @@ class OtpAuthController extends Controller
         if (User::onlyTrashed()->where('mobile', $mobile)->exists()) {
             return $this->deactivated();
         }
+        // 🌟 DEV-1: نسخه‌ی قدیمیِ اپ (بی‌شناسه‌ی دستگاه) پیش از مصرفِ کد رد می‌شود.
+        if ($legacy = $this->devices->legacyRejection($request)) {
+            return $legacy;
+        }
+        $device = $this->devices->deviceInfo($request);
         $user = User::where('mobile', $mobile)->first();
         $first = trim((string) ($data['first_name'] ?? ''));
         $last = trim((string) ($data['last_name'] ?? ''));
@@ -109,15 +123,8 @@ class OtpAuthController extends Controller
             $user->forceFill(['mobile_verified_at' => now()])->save();
         }
 
-        $user->forceFill(['last_seen_at' => now()])->save();
-        $token = $user->createToken(mb_substr($data['device_name'] ?? 'flutter-app-token', 0, 100))->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'خوش آمدید، '.$user->first_name.'!',
-            'token' => $token,
-            'user' => $user->toAppArray(),
-        ]);
+        // 🌟 DEV-1..4: ثبتِ دستگاه، توکنِ وابسته به دستگاه و مجوزِ آفلاین — یا ۴۰۹ِ سقفِ دستگاه.
+        return $this->devices->signIn($user, $device, 'خوش آمدید، '.$user->first_name.'!');
     }
 
     /** GET /api/me */

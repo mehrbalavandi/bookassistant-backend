@@ -30,6 +30,7 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
         'email',
         'password',
         'is_admin', // این خط را هم اضافه کنید تا لاراول اجازه ذخیره آن را بدهد
+        'max_devices', // 🌟 DEV-2: سقفِ اختصاصیِ دستگاه (null = پیش‌فرض)
     ];
     /**
      * Get the attributes that should be cast.
@@ -44,6 +45,7 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean', // ⚠️ این خط را حتماً اضافه کنید
+            'max_devices' => 'integer',
         ];
     }
 
@@ -73,6 +75,12 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
     public function devices()
     {
         return $this->hasMany(UserDevice::class);
+    }
+
+    /** 🌟 DEV-2: سقفِ دستگاه‌های فعالِ این کاربر. */
+    public function deviceLimit(): int
+    {
+        return max(1, (int) ($this->max_devices ?: config('devices.max_per_user', 1)));
     }
 
     public function orders()

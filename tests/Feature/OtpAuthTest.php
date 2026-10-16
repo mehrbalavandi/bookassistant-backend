@@ -21,29 +21,29 @@ class OtpAuthTest extends TestCase
 
     private function requestCode(string $mobile = '09121234567'): string
     {
-        $r = $this->postJson('/api/auth/otp/request', ['mobile' => $mobile])->assertOk();
+        $r = $this->postJson('/api/auth/otp/request', ['device_id' => 'test-device-0001', 'mobile' => $mobile])->assertOk();
 
         return $r->json('debug_code');
     }
 
     public function test_new_user_signs_up_with_name(): void
     {
-        $r = $this->postJson('/api/auth/otp/request', ['mobile' => '۰۹۱۲ ۱۲۳ ۴۵۶۷'])->assertOk();
+        $r = $this->postJson('/api/auth/otp/request', ['device_id' => 'test-device-0001', 'mobile' => '۰۹۱۲ ۱۲۳ ۴۵۶۷'])->assertOk();
         $this->assertFalse($r->json('registered'));
         $this->assertSame('09121234567', $r->json('mobile'));
         $code = $r->json('debug_code');
 
         // بدونِ نام ← needs_profile و کد هنوز مصرف نشده
-        $this->postJson('/api/auth/otp/verify', ['mobile' => '09121234567', 'code' => $code])
+        $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 'mobile' => '09121234567', 'code' => $code])
             ->assertStatus(422)->assertJson(['needs_profile' => true]);
 
-        $v = $this->postJson('/api/auth/otp/verify', [
+        $v = $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 
             'mobile' => '09121234567', 'code' => $code, 'first_name' => 'مهرشاد', 'last_name' => 'بلوندی',
         ])->assertOk();
         $this->assertNotEmpty($v->json('token'));
         $this->assertSame('مهرشاد بلوندی', $v->json('user.name'));
 
-        $this->withToken($v->json('token'))->getJson('/api/me')->assertOk()
+        $this->withToken($v->json('token'))->withHeader('X-Device-Id', 'test-device-0001')->getJson('/api/me')->assertOk()
             ->assertJsonPath('user.mobile', '09121234567');
     }
 
@@ -51,8 +51,8 @@ class OtpAuthTest extends TestCase
     {
         User::create(['name' => 'A B', 'first_name' => 'A', 'last_name' => 'B', 'mobile' => '09121234567']);
         $code = $this->requestCode();
-        $this->postJson('/api/auth/otp/verify', ['mobile' => '09121234567', 'code' => $code])->assertOk();
-        $this->postJson('/api/auth/otp/verify', ['mobile' => '09121234567', 'code' => $code])
+        $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 'mobile' => '09121234567', 'code' => $code])->assertOk();
+        $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 'mobile' => '09121234567', 'code' => $code])
             ->assertStatus(422)->assertJson(['reason' => 'expired']);
     }
 
@@ -61,28 +61,28 @@ class OtpAuthTest extends TestCase
         User::create(['name' => 'A B', 'mobile' => '09121234567']);
         $code = $this->requestCode();
         for ($i = 0; $i < 4; $i++) {
-            $this->postJson('/api/auth/otp/verify', ['mobile' => '09121234567', 'code' => '00000'])
+            $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 'mobile' => '09121234567', 'code' => '00000'])
                 ->assertStatus(422);
         }
-        $this->postJson('/api/auth/otp/verify', ['mobile' => '09121234567', 'code' => '00000'])
+        $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 'mobile' => '09121234567', 'code' => '00000'])
             ->assertJson(['reason' => 'too_many']);
         // حتی کدِ درست هم دیگر پذیرفته نمی‌شود
-        $this->postJson('/api/auth/otp/verify', ['mobile' => '09121234567', 'code' => $code])->assertStatus(422);
+        $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 'mobile' => '09121234567', 'code' => $code])->assertStatus(422);
     }
 
     public function test_resend_is_throttled_and_invalid_mobile_rejected(): void
     {
         $this->requestCode();
-        $this->postJson('/api/auth/otp/request', ['mobile' => '09121234567'])->assertStatus(429)
+        $this->postJson('/api/auth/otp/request', ['device_id' => 'test-device-0001', 'mobile' => '09121234567'])->assertStatus(429)
             ->assertJson(['success' => false]);
-        $this->postJson('/api/auth/otp/request', ['mobile' => '12345'])->assertStatus(422);
+        $this->postJson('/api/auth/otp/request', ['device_id' => 'test-device-0001', 'mobile' => '12345'])->assertStatus(422);
         $this->assertSame(1, OtpCode::count());
     }
 
     public function test_code_is_not_exposed_with_real_driver_or_without_debug(): void
     {
         config(['app.debug' => false]);
-        $r = $this->postJson('/api/auth/otp/request', ['mobile' => '09121234567'])->assertOk();
+        $r = $this->postJson('/api/auth/otp/request', ['device_id' => 'test-device-0001', 'mobile' => '09121234567'])->assertOk();
         $this->assertNull($r->json('debug_code'));
     }
 
@@ -96,7 +96,7 @@ class OtpAuthTest extends TestCase
         RateLimiter::clear('m:09351112233');
         $this->travel(3)->minutes();
         $code2 = $this->requestCode('09351112233');
-        $this->postJson('/api/auth/otp/verify', ['mobile' => '09351112233', 'code' => $code2])
+        $this->postJson('/api/auth/otp/verify', ['device_id' => 'test-device-0001', 'mobile' => '09351112233', 'code' => $code2])
             ->assertOk()->assertJsonPath('user.id', $user->id);
     }
 

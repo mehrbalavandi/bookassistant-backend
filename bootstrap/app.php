@@ -20,4 +20,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+        // 🌟 DEV-1: ۴۰۱ِ API دلیل را هم می‌گوید (device_revoked، device_mismatch، unbound، …)
+        // تا اپ بداند فقط دوباره وارد شود یا محتوای کاملِ کتاب‌ها را هم پاک کند.
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+            $reason = $request->attributes->get(\App\Services\DeviceService::DENIED_ATTRIBUTE);
+
+            return response()->json([
+                'message' => \App\Services\DeviceService::deniedMessage($reason),
+                'reason' => $reason ?? 'unauthenticated',
+            ], 401);
+        });
     })->create();
