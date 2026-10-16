@@ -31,7 +31,10 @@ class DevicesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $q) => $q->orderByRaw('revoked_at is not null')
+            // ⚠️ نامِ پارامتر باید دقیقاً $query باشد: Filament پارامترها را با نام تزریق می‌کند و
+            // با نامِ دیگر (مثلاً $q) یک Builderِ خالی و بی‌مدل از کانتینر می‌سازد ← خطای
+            // «Cannot use ::class on null» در صفحه‌ی ویرایشِ کاربر.
+            ->modifyQueryUsing(fn (Builder $query) => $query->orderByRaw('revoked_at is not null')
                 ->orderByRaw('activated_at is null')->orderByDesc('last_seen_at'))
             ->description(function () {
                 $user = $this->getOwnerRecord();
