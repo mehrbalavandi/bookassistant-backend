@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OtpAuthController;
+use App\Http\Controllers\Api\SharedStudyController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\BookController;
 
@@ -31,6 +32,8 @@ Route::post('/auth/otp/request', [OtpAuthController::class, 'request'])->middlew
 Route::post('/auth/otp/verify', [OtpAuthController::class, 'verify'])->middleware('throttle:otp-verify');
 // 🌟 DEV-2: سقفِ دستگاه پر بود ← با بلیتِ همان پاسخ یکی آزاد و این دستگاه وارد شود.
 Route::post('/auth/device/replace', [DeviceController::class, 'replace'])->middleware('throttle:otp-verify');
+// 🌟 ST-7: «مرورِ آماده» — واژه‌ها و نکته‌های ادمین برای «مرورِ من» (عمومی).
+Route::get('/study/shared', [SharedStudyController::class, 'index'])->middleware('throttle:30,1');
 // 🌟 PAY-2/3: روش‌های پرداختِ فعال (عمومی؛ اپ پیش از ورود هم می‌تواند نشان دهد)
 Route::get('/shop/options', [OrderController::class, 'options']);
 

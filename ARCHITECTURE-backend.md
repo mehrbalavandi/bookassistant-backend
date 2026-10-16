@@ -51,7 +51,7 @@ storage/app/private/books/{folder_name}/
 
 | فایل | محتوا |
 |---|---|
-| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/cover`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. `/auth/device/replace` (جایگزینیِ دستگاه با بلیت). پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices` (GET/POST)، `/devices/{device}` (DELETE)، `/license`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
+| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/cover`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. `/auth/device/replace` (جایگزینیِ دستگاه با بلیت)، `/study/shared` (مرورِ آماده). پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices` (GET/POST)، `/devices/{device}` (DELETE)، `/license`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
 | `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود (ایمیل و `/login/otp`)، `checkout/{book}` (سفارش می‌سازد)، `/pay/{order}` (لینکِ امضاشده ← درگاه)، `/payment/callback/{order}` (برگشت از درگاه، بی‌CSRF)، `admin.book-asset` و `admin.order-receipt` (فقط ادمین)، و `/app` + `/app/download/{platform}`. |
 
 ### API (`app/Http/Controllers/Api/`)
@@ -309,6 +309,33 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
   - اپِ تازه با `session.bound=false` یک‌بار خارج می‌شود تا دستگاهش ثبت شود.
   - بعد از انتشارِ اجباریِ نسخه‌ی تازه، `true`.
 - **تست‌ها:** `tests/Feature/DeviceBindingTest.php` و `AdminDevicesPanelTest.php` (جدولِ پنل).
+
+### مرورِ آماده (ST-7)
+
+واژه‌ها و نکته‌هایی که ادمین برای «مرورِ من»ِ همه‌ی کاربران آماده می‌کند.
+
+- **قالبِ یکسان** (`App\Support\StudyItemFormat`): همان قالبی است که اپ برای واژه/نکته‌ی «خودم»
+  و پرامپتِ هوش مصنوعی دارد. سند: `STUDY-ITEMS.md` در مخزنِ اپ.
+  - `parse` خروجیِ هوش مصنوعی را تمیز می‌کند: ```json، متنِ اضافه، نام‌های دیگرِ فیلدها،
+    تکراری‌ها.
+  - `normalize` یک مورد را تمیز می‌کند.
+  - `prompt('fa'|'ar'|'both')` پرامپت را می‌سازد. همتای اپ: `study_item_format.dart`؛ هر تغییری
+    هر دو جا.
+- **جدول `shared_study_items`:**
+  - `type`، `text`، `key` (یکتا: نوع + متنِ کوچک‌شده)، `payload` (JSONِ قالب)، `published`،
+    `changed_ms`، حذفِ نرم.
+  - `changed_ms` یکتا و صعودی است (`nextChangedMs`) و با ذخیره، حذف و بازگردانی زیاد می‌شود.
+- **API** (`SharedStudyController`): `GET /api/study/shared?since=`، عمومی.
+  - **بی‌since:** منتشرشده‌ها.
+  - **با since:** همه‌ی تغییرها، شاملِ حذف‌شده/منتشرنشده با `deleted=true`.
+  - **صفحه‌بندی:** `cursor` و `more` (۵۰۰ تایی).
+- **پنل** (`SharedStudyItemResource`، «مرورِ آماده»):
+  - فرم با فیلدهای `payload.*`.
+  - «پرامپتِ هوش مصنوعی».
+  - «واردکردن از هوش مصنوعی» (`SharedStudyItem::import`): تکراری‌ها به‌روز و حذف‌شده‌ها
+    برگردانده می‌شوند.
+- **پشتیبانِ «مرورِ من»:** `kind=tip` را هم می‌پذیرد. فیلدهای اضافه در `x`ِ همان payload‌اند.
+- **تست‌ها:** `tests/Feature/SharedStudyItemsTest.php`.
 
 ### میدل‌ویرها
 

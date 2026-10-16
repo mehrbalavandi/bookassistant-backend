@@ -36,7 +36,7 @@ class BackupController extends Controller
             'since_ms' => 'nullable|integer|min:0',
             'items' => 'present|array|max:'.self::MAX_ITEMS,
             'items.*.id' => 'required|string|max:191',
-            'items.*.kind' => 'required|string|in:word,passage',
+            'items.*.kind' => 'required|string|in:word,passage,tip', // 🌟 ST-7: tip = نکته
             'items.*.updated' => 'required|integer|min:0',
             'items.*.deleted' => 'sometimes|boolean',
             'items.*.text' => 'required_unless:items.*.deleted,true|nullable|string|max:5000',
