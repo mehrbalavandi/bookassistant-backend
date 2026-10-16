@@ -63,8 +63,15 @@ class OrderResource extends Resource
                     ->description(fn (Order $o) => $o->user?->mobile ?? $o->user?->email)
                     ->searchable(['name', 'mobile', 'email']),
                 Tables\Columns\TextColumn::make('book.title')->label('کتاب')->limit(30),
+                // 🌟 PAY-5: مبلغِ دقیقِ کارت‌به‌کارت (با «تومانِ شناسه»). جستجو با مبلغِ صورت‌حسابِ بانک
+                // (به تومان، بی‌جداکننده) سفارش را پیدا می‌کند.
                 Tables\Columns\TextColumn::make('amount')->label('مبلغ (تومان)')
-                    ->formatStateUsing(fn ($state) => number_format((int) $state))->sortable(),
+                    ->formatStateUsing(fn ($state) => number_format((int) $state))->sortable()
+                    ->searchable(query: fn (Builder $query, string $search) => $query->where(
+                        'amount',
+                        (int) preg_replace('/\D/', '', strtr($search, ['۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9'])),
+                    ))
+                    ->description(fn (Order $o) => $o->amount_suffix ? 'شناسه: '.$o->amount_suffix.' تومان' : null),
                 Tables\Columns\TextColumn::make('method')->label('روش')
                     ->formatStateUsing(fn ($state) => $state === Order::METHOD_CARD ? 'کارت‌به‌کارت' : 'درگاه'),
                 Tables\Columns\TextColumn::make('status')->label('وضعیت')->badge()
@@ -115,7 +122,9 @@ class OrderResource extends Resource
                     ->visible(fn (Order $o) => $o->method === Order::METHOD_CARD
                         && in_array($o->status, [Order::AWAITING_REVIEW, Order::REJECTED, Order::PENDING], true))
                     ->requiresConfirmation()
-                    ->modalDescription(fn (Order $o) => 'پیش از تأیید، واریزِ '.number_format($o->amount).' تومان با کدِ پیگیریِ «'.$o->card_tracking_code.'» را در حسابِ بانکی ببینید.')
+                    ->modalDescription(fn (Order $o) => 'پیش از تأیید، واریزِ دقیقاً '.number_format($o->amount).' تومان ('
+                        .number_format($o->amount * 10).' ریال) با کدِ پیگیریِ «'.$o->card_tracking_code.'» را در حسابِ بانکی ببینید.'
+                        .($o->amount_suffix ? ' '.$o->amount_suffix.' تومانِ آخر شناسه‌ی همین سفارش است.' : ''))
                     ->action(function (Order $o) {
                         app(OrderService::class)->approve($o, Auth::user());
                         Notification::make()->title('کتاب برای کاربر فعال شد.')->success()->send();

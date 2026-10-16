@@ -36,9 +36,13 @@ class OrderFlowTest extends TestCase
 
         $r = $this->actingAs($user)->postJson('/api/orders', ['book_id' => $this->book->id, 'method' => 'card'])
             ->assertCreated()
-            ->assertJsonPath('order.amount', 180000)
             ->assertJsonPath('card.number', '6037991122334455');
         $orderId = $r->json('order.id');
+        // 🌟 PAY-5: قیمت + «تومانِ شناسه» (۱ تا ۹۹۹)
+        $suffix = $r->json('order.amount_suffix');
+        $this->assertGreaterThanOrEqual(1, $suffix);
+        $this->assertLessThanOrEqual(999, $suffix);
+        $this->assertSame(180000 + $suffix, $r->json('order.amount'));
 
         $this->actingAs($user)->post("/api/orders/{$orderId}/receipt", [
             'tracking_code' => '123456', 'card_last4' => '9876',
@@ -126,5 +130,46 @@ class OrderFlowTest extends TestCase
         Storage::disk('local')->put('receipts/x.jpg', 'img');
         $this->actingAs($user)->get("/admin/order-receipt/{$order->id}")->assertForbidden();
         $this->actingAs(User::factory()->create(['is_admin' => true]))->get("/admin/order-receipt/{$order->id}")->assertOk();
+    }
+
+    public function test_card_amount_suffix_is_unique_among_open_orders(): void
+    {
+        config(['shop.card.unique_max' => 5]);
+        $amounts = [];
+        for ($i = 0; $i < 5; $i++) {
+            $u = User::factory()->create();
+            $amounts[] = $this->actingAs($u)->postJson('/api/orders', ['book_id' => $this->book->id, 'method' => 'card'])
+                ->assertCreated()->json('order.amount');
+        }
+        sort($amounts);
+        $this->assertSame([180001, 180002, 180003, 180004, 180005], $amounts, 'هر مبلغ فقط یک‌بار');
+
+        // سفارشِ بسته‌شده عددش را آزاد می‌کند.
+        Order::where('amount', 180003)->update(['status' => Order::PAID]);
+        $u = User::factory()->create();
+        $this->actingAs($u)->postJson('/api/orders', ['book_id' => $this->book->id, 'method' => 'card'])
+            ->assertJsonPath('order.amount', 180003);
+
+        // درگاه شناسه ندارد؛ با 0 کارت‌به‌کارت هم ندارد.
+        $this->actingAs(User::factory()->create())->postJson('/api/orders', ['book_id' => $this->book->id, 'method' => 'gateway'])
+            ->assertJsonPath('order.amount', 180000)->assertJsonPath('order.amount_suffix', null);
+        config(['shop.card.unique_max' => 0]);
+        $this->actingAs(User::factory()->create())->postJson('/api/orders', ['book_id' => $this->book->id, 'method' => 'card'])
+            ->assertJsonPath('order.amount', 180000);
+    }
+
+    public function test_admin_finds_order_by_bank_amount(): void
+    {
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('admin'));
+        $u = User::factory()->create();
+        $a = Order::create(['user_id' => $u->id, 'book_id' => $this->book->id, 'amount' => 180417, 'amount_suffix' => 417,
+            'method' => 'card', 'status' => Order::AWAITING_REVIEW]);
+        $b = Order::create(['user_id' => $u->id, 'book_id' => $this->book->id, 'amount' => 180052, 'amount_suffix' => 52,
+            'method' => 'card', 'status' => Order::AWAITING_REVIEW]);
+        \Livewire\Livewire::test(\App\Filament\Resources\OrderResource\Pages\ListOrders::class)
+            ->searchTable('۱۸۰,۴۱۷')
+            ->assertCanSeeTableRecords([$a])->assertCanNotSeeTableRecords([$b])
+            ->assertSee('شناسه: 417 تومان');
     }
 }

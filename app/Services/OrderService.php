@@ -34,10 +34,14 @@ class OrderService
             ->where('method', $method)->where('status', Order::PENDING)
             ->update(['status' => Order::CANCELED]);
 
+        // 🌟 PAY-5: کارت‌به‌کارت ← مبلغ + «تومانِ شناسه»ی یکتا میانِ سفارش‌های باز.
+        $suffix = $method === Order::METHOD_CARD && $amount > 0 ? $this->uniqueSuffix($amount) : null;
+
         $order = Order::create([
             'user_id' => $user->id,
             'book_id' => $book->id,
-            'amount' => $amount,
+            'amount' => $amount + ($suffix ?? 0),
+            'amount_suffix' => $suffix,
             'method' => $method,
             'gateway' => $method === Order::METHOD_GATEWAY ? config('shop.gateway') : null,
             'status' => Order::PENDING,
@@ -50,6 +54,43 @@ class OrderService
         }
 
         return $order->fresh();
+    }
+
+    /**
+     * 🌟 PAY-5: عددی تصادفی از ۱ تا shop.card.unique_max که مبلغِ نهایی‌اش (قیمت + عدد) با هیچ
+     * سفارشِ کارت‌به‌کارتِ بازِ دیگری (در انتظارِ پرداخت یا بررسی) یکی نباشد. این‌طور هر واریز در
+     * صورت‌حسابِ بانک فقط به یک سفارش می‌خورد. null = خاموش.
+     */
+    public function uniqueSuffix(int $base): ?int
+    {
+        $max = (int) config('shop.card.unique_max', 999);
+        if ($max <= 0) {
+            return null;
+        }
+        $taken = Order::where('method', Order::METHOD_CARD)
+            ->whereIn('status', [Order::PENDING, Order::AWAITING_REVIEW])
+            ->whereBetween('amount', [$base + 1, $base + $max])
+            ->pluck('amount')
+            ->map(fn ($a) => (int) $a - $base)
+            ->flip();
+
+        if ($taken->count() < $max) {
+            for ($i = 0; $i < 30; $i++) {
+                $s = random_int(1, $max);
+                if (! $taken->has($s)) {
+                    return $s;
+                }
+            }
+            // شانس نیاورد: اولین عددِ آزاد.
+            for ($s = 1; $s <= $max; $s++) {
+                if (! $taken->has($s)) {
+                    return $s;
+                }
+            }
+        }
+
+        // همه‌ی اعداد گرفته‌اند (بیش از unique_max سفارشِ بازِ هم‌قیمت): تصادفی، تکراری.
+        return random_int(1, $max);
     }
 
     /** لینکِ امضاشده‌ی شروعِ پرداخت (برای اپ: در مرورگر باز می‌شود، بدونِ نیاز به ورود). */

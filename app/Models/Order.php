@@ -29,7 +29,7 @@ class Order extends Model
     ];
 
     protected $fillable = [
-        'user_id', 'book_id', 'amount', 'method', 'gateway', 'status',
+        'user_id', 'book_id', 'amount', 'amount_suffix', 'method', 'gateway', 'status',
         'transaction_id', 'reference_id', 'card_tracking_code', 'card_last4',
         'card_paid_at', 'receipt_path', 'admin_note', 'reviewed_by', 'reviewed_at',
         'paid_at', 'ip', 'source',
@@ -37,6 +37,7 @@ class Order extends Model
 
     protected $casts = [
         'amount' => 'integer',
+        'amount_suffix' => 'integer',
         'reviewed_at' => 'datetime',
         'paid_at' => 'datetime',
     ];
@@ -68,6 +69,8 @@ class Order extends Model
             'book_id' => $this->book_id,
             'book_title' => $this->book?->title,
             'amount' => $this->amount,
+            // 🌟 PAY-5: چند تومانِ آخرِ مبلغ که واریز را به این سفارش وصل می‌کند (فقط کارت‌به‌کارت).
+            'amount_suffix' => $this->amount_suffix,
             'method' => $this->method,
             'status' => $this->status,
             'status_label' => $this->status_label,
