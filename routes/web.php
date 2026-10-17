@@ -18,12 +18,26 @@ Route::get('/app/download/{platform}', [\App\Http\Controllers\AppReleaseControll
 
 use App\Http\Controllers\WebAuthController;
 
-Route::get('/register', [WebController::class, 'showRegisterForm'])->name('register');
-Route::post('/register', [WebController::class, 'register'])->name('register.store');
+// 🌟 SITE-2: ورود (موبایل یا ایمیل) و ثبت‌نامِ ایمیلی — هر روش از پنل روشن/خاموش می‌شود.
+Route::get('/register', [WebAuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [WebAuthController::class, 'register'])->middleware('throttle:login')->name('register.store');
 
 // مسیرهای مربوط به ورود
 Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [WebAuthController::class, 'login']);
+Route::post('/login', [WebAuthController::class, 'login'])->middleware('throttle:login');
+
+// 🌟 SITE-6: بازیابیِ رمزِ حساب‌های ایمیلی
+Route::get('/forgot-password', [\App\Http\Controllers\PasswordResetController::class, 'showForgot'])->name('password.request');
+Route::post('/forgot-password', [\App\Http\Controllers\PasswordResetController::class, 'sendLink'])
+    ->middleware('throttle:password-reset')->name('password.email');
+Route::get('/reset-password/{token}', [\App\Http\Controllers\PasswordResetController::class, 'showReset'])->name('password.reset');
+Route::post('/reset-password', [\App\Http\Controllers\PasswordResetController::class, 'reset'])
+    ->middleware('throttle:login')->name('password.update');
+
+// 🌟 SITE-5: صفحه‌های ثابت (متن از پنل)
+Route::get('/contact', [\App\Http\Controllers\PageController::class, 'contact'])->name('contact');
+Route::get('/page/{slug}', [\App\Http\Controllers\PageController::class, 'show'])
+    ->where('slug', 'about|terms|privacy')->name('page');
 
 // مسیر خروج
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\OtpService;
+use App\Support\AuthMethods;
 use App\Support\Mobile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,10 @@ class WebOtpController extends Controller
         if (Auth::check()) {
             return redirect()->route('home');
         }
+        // 🌟 SITE-2: موبایل خاموش ← صفحه‌ی ورود (که پیامِ «فعلاً فعال نیست» را نشان می‌دهد)
+        if (! AuthMethods::mobile()) {
+            return redirect()->route('login');
+        }
         $mobile = session('otp_mobile');
 
         return view('auth.login-otp', [
@@ -32,12 +37,18 @@ class WebOtpController extends Controller
 
     public function request(Request $request)
     {
+        if (! AuthMethods::mobile()) {
+            return redirect()->route('login')->withErrors(['mobile' => AuthMethods::disabledMessage(AuthMethods::MOBILE)]);
+        }
         $mobile = Mobile::normalize($request->input('mobile'));
         if (! $mobile) {
             return back()->withErrors(['mobile' => 'شماره‌ی موبایل معتبر نیست (مثلاً 09121234567).'])->withInput();
         }
         if (User::onlyTrashed()->where('mobile', $mobile)->exists()) {
             return back()->withErrors(['mobile' => 'این حساب غیرفعال شده است؛ با پشتیبانی تماس بگیرید.'])->withInput();
+        }
+        if (! AuthMethods::registration() && ! User::where('mobile', $mobile)->exists()) {
+            return back()->withErrors(['mobile' => AuthMethods::registrationClosedMessage()])->withInput();
         }
         try {
             $r = $this->otp->request($mobile, $request->ip());
@@ -57,6 +68,9 @@ class WebOtpController extends Controller
 
     public function verify(Request $request)
     {
+        if (! AuthMethods::mobile()) {
+            return redirect()->route('login')->withErrors(['mobile' => AuthMethods::disabledMessage(AuthMethods::MOBILE)]);
+        }
         $mobile = session('otp_mobile');
         if (! $mobile) {
             return redirect()->route('login.otp');
@@ -67,6 +81,9 @@ class WebOtpController extends Controller
             'last_name' => 'nullable|string|max:100',
         ]);
         $user = User::where('mobile', $mobile)->first();
+        if (! $user && ! AuthMethods::registration()) {
+            return back()->withErrors(['code' => AuthMethods::registrationClosedMessage()]);
+        }
         $first = trim((string) ($data['first_name'] ?? ''));
         $last = trim((string) ($data['last_name'] ?? ''));
         if (! $user && ($first === '' || $last === '')) {

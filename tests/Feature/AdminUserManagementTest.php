@@ -134,6 +134,8 @@ class AdminUserManagementTest extends TestCase
             ->assertSee('آکادمی زبان و آیلتس')
             ->assertSee('images/logo-192.png')
             ->assertDontSee('filamentphp.com');
+        // صفحه‌ی ورود برای مهمان (کاربرِ واردشده به صفحه‌ی اصلی برگردانده می‌شود)
+        auth()->logout();
         $this->get('/login')->assertOk()->assertSee('favicon.ico');
     }
 

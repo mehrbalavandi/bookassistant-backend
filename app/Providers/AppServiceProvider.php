@@ -8,6 +8,9 @@ use App\Services\Sms\LogSmsSender;
 use App\Services\Sms\SmsIrSmsSender;
 use App\Services\Sms\SmsSender;
 use App\Support\Mobile;
+use App\Support\SiteSettings;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -42,6 +45,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // 🌟 SITE-1: مقدارهایی که ادمین در «تنظیماتِ سایت» عوض کرده روی config نوشته می‌شوند
+        // (پیش از هر چیز، تا پیامک، پرداخت، دستگاه و ورود همه از همان پیروی کنند).
+        SiteSettings::apply();
+
         // 🌟 AUTH-2: سقفِ درخواستِ کد — هم به‌ازای IP و هم به‌ازای شماره (جلوی هزینه‌تراشی
         // با پیامک و حدس‌زدنِ کد را می‌گیرد). تأییدِ کد هم سقفِ جدا دارد.
         // 🌟 DEV-1: هر توکنِ API فقط از دستگاهی که به آن گره خورده و هنوز فعال است پذیرفته
@@ -65,6 +72,37 @@ class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(10)->by('ip:'.$request->ip()),
             ];
+        });
+        // 🌟 SITE-6: ورود/ثبت‌نام با ایمیل و فراموشیِ رمز — جلوی حدس‌زدنِ رمز و ارسالِ انبوهِ ایمیل.
+        RateLimiter::for('login', function (Request $request) {
+            $email = mb_strtolower(trim((string) $request->input('email')));
+
+            return [
+                Limit::perMinute(5)->by('le:'.$email.'|'.$request->ip()),
+                Limit::perMinute(20)->by('li:'.$request->ip()),
+            ];
+        });
+        RateLimiter::for('password-reset', function (Request $request) {
+            return [
+                Limit::perMinute(3)->by('pr:'.$request->ip()),
+                Limit::perHour(10)->by('prh:'.mb_strtolower(trim((string) $request->input('email')))),
+            ];
+        });
+
+        // 🌟 SITE-6: ایمیلِ بازیابیِ رمز به فارسی
+        ResetPassword::toMailUsing(function ($notifiable, string $token) {
+            $url = url(route('password.reset', ['token' => $token, 'email' => $notifiable->getEmailForPasswordReset()], false));
+            $minutes = (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60);
+            $site = (string) config('site.name');
+
+            return (new MailMessage)
+                ->subject('بازیابیِ رمزِ عبور — '.$site)
+                ->greeting('سلام!')
+                ->line('درخواستِ بازیابیِ رمزِ حسابِ شما در '.$site.' ثبت شد.')
+                ->action('ساختنِ رمزِ تازه', $url)
+                ->line('این لینک تا '.$minutes.' دقیقه معتبر است.')
+                ->line('اگر شما درخواست نداده‌اید، این ایمیل را نادیده بگیرید؛ رمزتان عوض نمی‌شود.')
+                ->salutation('با احترام، '.$site);
         });
     }
 }

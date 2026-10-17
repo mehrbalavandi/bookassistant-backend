@@ -10,8 +10,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\BookController;
 
 // 🟢 مسیرهای عمومی (بدون نیاز به قفل Sanctum - برای همه باز است)
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:login');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+// 🌟 SITE-6: لینکِ بازیابیِ رمز به ایمیل (رمزِ تازه در سایت ساخته می‌شود)
+Route::post('/password/forgot', [\App\Http\Controllers\PasswordResetController::class, 'apiSendLink'])->middleware('throttle:password-reset');
+// 🌟 SITE-7: تنظیماتی که اپ پیش از ورود لازم دارد (روش‌های ورود، اطلاعیه، تعمیر، پشتیبانی)
+Route::get('/app/config', [\App\Http\Controllers\Api\AppConfigController::class, 'show'])->middleware('throttle:60,1');
 Route::get('/books', [BookController::class, 'index']);
 // 🌟 بررسیِ نسخه‌ی تازه‌ی اپ (عمومی): ?platform=android|windows
 Route::get('/app/latest', [\App\Http\Controllers\AppReleaseController::class, 'latest']);

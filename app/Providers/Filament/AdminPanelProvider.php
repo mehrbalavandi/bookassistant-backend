@@ -30,11 +30,12 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             // 🌟 نام و نشانِ خودِ پروژه به‌جای Laravel/Filament (همان آیکونِ اپ).
-            ->brandName('آکادمی زبان و آیلتس')
+            // 🌟 SITE-1: نامِ سایت از «تنظیماتِ سایت»
+            ->brandName(fn () => (string) config('site.name'))
             ->brandLogo(fn () => new HtmlString(
                 '<span style="display:flex;align-items:center;gap:.5rem;font-weight:700">'
                 .'<img src="'.asset('images/logo-192.png').'" alt="" style="height:2.25rem;width:2.25rem;border-radius:.5rem">'
-                .'آکادمی زبان و آیلتس</span>'
+                .e((string) config('site.name')).'</span>'
             ))
             ->brandLogoHeight('2.25rem')
             ->favicon(asset('favicon.ico'))

@@ -3,75 +3,108 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\AuthMethods;
+use App\Support\PasswordRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * ورود و ثبت‌نامِ سایت.
+ * 🌟 SITE-2: صفحه‌ی /login هر دو روش (موبایل و ایمیل) را نشان می‌دهد و /register ثبت‌نامِ ایمیلی را؛
+ * روشی که در پنل خاموش است دیده می‌شود ولی به‌جای فرم پیامِ «فعلاً فعال نیست» دارد، و سرور هم
+ * درخواستش را رد می‌کند. ادمین‌ها همیشه می‌توانند با ایمیل وارد شوند (قفل نشوند).
+ */
 class WebAuthController extends Controller
 {
-    // ۱. نمایش صفحه ثبت‌نام
-    public function showRegister()
+    public function showLogin(Request $request)
     {
-        return view('auth.register');
-    }
+        if (Auth::check()) {
+            return redirect()->route('home');
+        }
 
-    // ۲. پردازش اطلاعات ثبت‌نام
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'string', 'confirmed', \App\Support\PasswordRules::forUsers()], // ADM-2: همان قانونِ اپ
+        return view('auth.login', [
+            'methods' => AuthMethods::toArray(),
+            'tab' => $request->query('tab') === 'email' || session('tab') === 'email' ? 'email' : 'mobile',
         ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        // لاگین کردن کاربر بلافاصله پس از ثبت‌نام
-        Auth::login($user);
-
-        return redirect()->route('home');
     }
 
-    // ۳. نمایش صفحه ورود
-    public function showLogin()
-    {
-        return view('auth.login');
-    }
-
-    // ۴. پردازش اطلاعات ورود
     public function login(Request $request)
     {
         $credentials = $request->validate([
             'email' => 'required|string|email',
             'password' => 'required|string',
-        ]);
+        ], PasswordRules::messages(), PasswordRules::attributes());
+        $email = mb_strtolower(trim($credentials['email']));
+        $user = User::where('email', $email)->first() ?? User::where('email', $credentials['email'])->first();
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-
-            // 🌟 درخواستِ کاربر: اگر جلسه در یک صفحه‌ی خاص منقضی شده بود، بعد
-            // از ورودِ مجدد به همان صفحه برگردیم. لاراول موقعِ ریدایرکتِ
-            // کاربرِ مهمان (redirect()->guest در هندلرِ استثناها) آدرسِ آن
-            // صفحه را در session('url.intended') گذاشته؛ intended همان را
-            // برمی‌دارد و اگر چیزی نبود به صفحه‌ی اصلی می‌رود.
-            return redirect()->intended(route('home'));
+        if (! $user || ! $user->password || ! Hash::check($credentials['password'], $user->password)) {
+            return back()->with('tab', 'email')->withInput($request->only('email'))->withErrors([
+                'email' => AuthMethods::email() ? 'ایمیل یا رمز عبور اشتباه است.' : AuthMethods::disabledMessage(AuthMethods::EMAIL),
+            ]);
+        }
+        if (! AuthMethods::emailAllowedFor($user)) {
+            return back()->with('tab', 'email')->withErrors(['email' => AuthMethods::disabledMessage(AuthMethods::EMAIL)]);
         }
 
-        return back()->withErrors([
-            'email' => 'ایمیل یا رمز عبور اشتباه است.',
-        ]);
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+        $user->forceFill(['last_seen_at' => now()])->save();
+
+        // 🌟 اگر جلسه در یک صفحه‌ی خاص منقضی شده بود، بعد از ورودِ مجدد به همان صفحه برگردیم
+        // (redirect()->guest آدرس را در session('url.intended') گذاشته).
+        return redirect()->intended(route('home'));
     }
 
-    // ۵. خروج از حساب کاربری
+    public function showRegister()
+    {
+        if (Auth::check()) {
+            return redirect()->route('home');
+        }
+
+        return view('auth.register', ['methods' => AuthMethods::toArray()]);
+    }
+
+    public function register(Request $request)
+    {
+        if (! AuthMethods::email()) {
+            return back()->withErrors(['email' => AuthMethods::disabledMessage(AuthMethods::EMAIL)]);
+        }
+        if (! AuthMethods::registration()) {
+            return back()->withErrors(['email' => AuthMethods::registrationClosedMessage()]);
+        }
+        $data = $request->validate([
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => 'required|string|confirmed|max:200',
+        ], PasswordRules::messages(), PasswordRules::attributes());
+        // ADM-2: همان قانونِ رمزِ اپ، با پیامِ فارسی
+        if ($problem = PasswordRules::problem($data['password'])) {
+            return back()->withInput($request->except('password', 'password_confirmation'))->withErrors(['password' => $problem]);
+        }
+
+        $user = User::create([
+            'name' => trim($data['first_name']).' '.trim($data['last_name']),
+            'first_name' => trim($data['first_name']),
+            'last_name' => trim($data['last_name']),
+            'email' => mb_strtolower(trim($data['email'])),
+            'password' => Hash::make($data['password']),
+            'is_admin' => false,
+        ]);
+
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        return redirect()->route('home')->with('success', 'ثبت‌نام شما با موفقیت انجام شد!');
+    }
+
     public function logout(Request $request)
     {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('home');
     }
 }

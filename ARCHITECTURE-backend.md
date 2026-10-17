@@ -143,8 +143,13 @@ storage/app/private/books/{folder_name}/
 
 ### وب (`app/Http/Controllers/`)
 
-- `WebController.php` — صفحه‌ی اصلی، ثبت‌نام و `checkout`. `checkout` سفارش می‌سازد و
+- `WebController.php` — صفحه‌ی اصلی و `checkout`. `checkout` سفارش می‌سازد و
   به همان لینکِ امضاشده‌ای می‌رود که اپ استفاده می‌کند.
+- 🌟 SITE-2/5/6: `WebAuthController.php` (ورودِ `/login` با دو تبِ موبایل و ایمیل، ثبت‌نامِ ایمیلیِ
+  `/register`)، `PasswordResetController.php` (‎`/forgot-password`‎، ‎`/reset-password/{token}`‎ و
+  ‎`POST /api/password/forgot`‎؛ پاسخ همیشه یکسان)، `PageController.php` (‎`/page/{about|terms|privacy}`‎
+  و ‎`/contact`‎). نماها روی `layouts/site.blade.php` (Tailwindِ محلی: `public/js/tailwind-browser-4.3.3.js`،
+  بی‌وابستگی به CDN) با `partials/announcement` و `partials/footer`.
 - `PaymentController.php` — `start` (لینکِ امضاشده ← فرمِ درگاه) و `callback`
   (برگشت از درگاه). در `callback` شناسه‌ی تراکنشِ برگشتی (Authority) باید با سفارش جور
   باشد؛ نتیجه در `resources/views/payment/result.blade.php` نمایش داده می‌شود. هیچ‌کدام
@@ -167,6 +172,29 @@ storage/app/private/books/{folder_name}/
 - `Admin/BookAssetController.php` — سرو کردنِ فایلِ صوتی/تصویری برای
   پیش‌نمایش در پنلِ ادمین. **خودش ادمین‌بودن را چک می‌کند**؛ `auth` روی
   مسیر فقط لایه‌ی اول است.
+
+### تنظیماتِ سایت (SITE-1..9)
+
+- **`app/Support/SiteSettings.php`:** فهرستِ سفیدِ کلیدهای config که از پنل عوض می‌شوند (`FIELDS`).
+  مقدارها در جدولِ `site_settings` (کلید = کلیدِ config، مقدار = JSON؛ کلیدهای `secret` با `Crypt`)
+  ذخیره و در `AppServiceProvider::boot` با `config([...])` روی config نوشته می‌شوند. پس کدِ قدیمی
+  (`config('shop.card.enabled')`، `config('sms.driver')`، …) بی‌تغییر از پنل پیروی می‌کند. ردیف‌ها
+  (هنوز رمزنگاری‌شده) کش می‌شوند و با هر ذخیره پاک. پیش‌فرض‌ها: `config/site.php` و بقیه‌ی configها.
+- **`app/Support/AuthMethods.php`:** روش‌های ورود. موبایل خاموش ← `otp/request|verify` (API و وب)
+  ‎403 `reason=method_disabled`‎ و پیامکی فرستاده نمی‌شود. ایمیل خاموش ← `/api/login`، `/api/register`
+  و وب ‎403/خطا‎، **جز ادمین‌ها**. ثبت‌نام بسته ← کاربرِ تازه با هیچ روشی ساخته نمی‌شود
+  (‎`reason=registration_closed`‎). `AdminAuthenticate` وقتی ایمیل خاموش است به ‎`/admin/login`‎ می‌فرستد.
+- **`PasswordRules`:** قانونِ رمز از `site.auth.password_mode` (strong/medium/lax) و پیام‌های فارسیِ
+  فرم‌ها (`messages()`، `problem()`).
+- **`Api/AppConfigController`:** ‎`GET /api/app/config`‎ برای اپ: روش‌ها و پیام‌ها، اطلاعیه، تعمیر،
+  پشتیبانی، پیوندِ صفحه‌ها. در حالتِ تعمیر هم جواب می‌دهد.
+- **میدل‌ویرها:** `SiteMaintenance` (گروه‌های web و api؛ ‎503‎ برای غیرِ ادمین؛ ورود، پنل، برگشتِ درگاه
+  و ‎`/api/app/*`‎ باز) و `SecurityHeaders` (همه‌ی پاسخ‌ها).
+- **محدودیتِ درخواست:** `throttle:login` (ورود/ثبت‌نامِ ایمیلی، ۵ در دقیقه به‌ازای ایمیل+IP) و
+  `throttle:password-reset`.
+- **پنل:** `Filament/Pages/SiteSettingsPage.php` (تب‌ها، پیامک/ایمیلِ آزمایشی، بازگردانی) و
+  `Filament/Widgets/SiteOverview.php` (داشبورد).
+- **تست‌ها:** `tests/Feature/SiteSettingsTest.php`.
 
 ### پنلِ ادمین (`app/Filament/`)
 
@@ -368,7 +396,8 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
 
 `AdminAuthenticate` و `AdminAuthenticateSession` فقط یک کار می‌کنند:
 `redirectTo()` را به `route('login')` تغییر می‌دهند تا انقضای جلسه به
-صفحه‌ی ورودِ سایت برود نه `/admin/login`. **دو تا لازم است** چون انقضای
+صفحه‌ی ورودِ سایت برود نه `/admin/login` (🌟 SITE-2: اگر ورودِ ایمیلی خاموش باشد، `AdminAuthenticate`
+به `/admin/login` می‌فرستد). `SiteMaintenance` و `SecurityHeaders` در بخشِ «تنظیماتِ سایت» آمده‌اند. **دو تا لازم است** چون انقضای
 عادی و باطل‌شدنِ جلسه (بعد از تغییرِ رمز) دو مسیرِ جداگانه‌اند.
 
 ## نکته‌های عملی

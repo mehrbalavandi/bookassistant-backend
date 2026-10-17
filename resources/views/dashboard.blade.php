@@ -43,6 +43,7 @@
     </style>
 </head>
 <body>
+    @include('partials.announcement')
 
     <div class="header">
         <h2>👋 خوش آمدید، {{ Auth::user()->name }} عزیز</h2>
@@ -72,5 +73,6 @@
         @include('partials.catalog', ['canBuy' => true])
     </div>
 
+    @include('partials.footer')
 </body>
 </html>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\DeviceService;
 use App\Services\OtpService;
+use App\Support\AuthMethods;
 use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,10 @@ class OtpAuthController extends Controller
 
     public function request(Request $request): JsonResponse
     {
+        // 🌟 SITE-2: روشِ موبایل در پنل خاموش است ← پیامکی فرستاده نمی‌شود.
+        if (! AuthMethods::mobile()) {
+            return AuthMethods::disabledResponse(AuthMethods::MOBILE);
+        }
         $mobile = Mobile::normalize($request->input('mobile'));
         if (! $mobile) {
             return $this->invalidMobile();
@@ -39,6 +44,12 @@ class OtpAuthController extends Controller
         // پیش از اینکه پیامکی فرستاده شود.
         if ($legacy = $this->devices->legacyRejection($request)) {
             return $legacy;
+        }
+        // 🌟 SITE-2: ثبت‌نامِ تازه بسته است ← برای شماره‌ی ناشناس کد فرستاده نمی‌شود. وصل کردنِ
+        // شماره به حسابِ موجود (کاربرِ واردشده، POST /me/mobile) از این قاعده آزاد است.
+        $registered = User::where('mobile', $mobile)->exists();
+        if (! $registered && ! AuthMethods::registration() && ! auth('sanctum')->check()) {
+            return AuthMethods::registrationClosedResponse();
         }
 
         try {
@@ -53,7 +64,7 @@ class OtpAuthController extends Controller
         $body = [
             'success' => $result['sent'],
             'mobile' => $mobile,
-            'registered' => User::where('mobile', $mobile)->exists(),
+            'registered' => $registered,
             'retry_after' => $result['retry_after'],
             'expires_in' => (int) config('sms.otp.ttl_seconds'),
             'code_length' => (int) config('sms.otp.length'),
@@ -70,6 +81,9 @@ class OtpAuthController extends Controller
 
     public function verify(Request $request): JsonResponse
     {
+        if (! AuthMethods::mobile()) {
+            return AuthMethods::disabledResponse(AuthMethods::MOBILE);
+        }
         $mobile = Mobile::normalize($request->input('mobile'));
         if (! $mobile) {
             return $this->invalidMobile();
@@ -90,6 +104,9 @@ class OtpAuthController extends Controller
         }
         $device = $this->devices->deviceInfo($request);
         $user = User::where('mobile', $mobile)->first();
+        if (! $user && ! AuthMethods::registration()) {
+            return AuthMethods::registrationClosedResponse();
+        }
         $first = trim((string) ($data['first_name'] ?? ''));
         $last = trim((string) ($data['last_name'] ?? ''));
         // نام را قبل از مصرفِ کد چک می‌کنیم تا کاربرِ تازه برای واردکردنِ نام کدِ تازه نخواهد.

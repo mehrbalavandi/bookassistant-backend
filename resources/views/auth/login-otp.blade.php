@@ -1,17 +1,10 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    @include('partials.favicon')
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ورود با موبایل</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
-    <style>body { font-family: var(--font-fa); }</style>
-</head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+{{-- 🌟 AUTH-1: مرحله‌ی کدِ ورودِ پیامکی (مرحله‌ی شماره در صفحه‌ی ورود هم هست). --}}
+@extends('layouts.site')
+@section('title', 'ورود با موبایل')
+@section('noindex', '1')
 
-    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md">
+@section('content')
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md mx-auto">
         <h2 class="text-2xl font-bold text-center text-slate-900 mb-2">ورود یا ثبت‌نام</h2>
         <p class="text-center text-sm text-slate-500 mb-6">با شماره‌ی موبایل؛ همان حسابی که در برنامه دارید.</p>
 
@@ -67,9 +60,8 @@
         @endif
 
         <p class="text-center text-sm text-slate-500 mt-6">
-            حسابِ قدیمیِ ایمیلی دارید؟ <a href="{{ route('login') }}" class="text-blue-600 font-bold">ورود با ایمیل</a>
+            <a href="{{ route('login') }}" class="text-blue-600 font-bold">بازگشت به صفحه‌ی ورود</a>
         </p>
     </div>
 
-</body>
-</html>
+@endsection

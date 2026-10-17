@@ -13,35 +13,7 @@ use Illuminate\Support\Facades\Auth;
 class WebController extends Controller
 {
 
-    // ۱. نمایش صفحه فرم ثبت‌نام
-    public function showRegisterForm()
-    {
-        if (Auth::check()) {
-            return redirect('/');
-        }
-        return view('register');
-    }
-
-    // ۲. پردازش اطلاعات فرم، ذخیره در دیتابیس و لاگین آنی
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'string', 'confirmed', \App\Support\PasswordRules::forUsers()], // ADM-2: همان قانونِ اپ
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'is_admin' => false,
-        ]);
-
-        Auth::login($user);
-
-        return redirect('/')->with('success', 'ثبت‌نام شما با موفقیت انجام شد!');
-    }
+    // ثبت‌نام و ورود در WebAuthController و WebOtpController است (SITE-2).
 
     // ۱. اصلاح متد نمایش صفحه اصلی برای فرستادن فیلد تخفیف به قالب سایت
     public function homePage()

@@ -4,7 +4,8 @@
     @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>آکادمی زبان و آیلتس</title>
+    <title>{{ config('site.name') }}</title>
+    <meta name="description" content="{{ config('site.seo_description') }}">
     <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
     <style>
         body { font-family: var(--font-fa); background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
@@ -43,9 +44,10 @@
     </style>
 </head>
 <body>
+    @include('partials.announcement')
 
     <div class="header">
-        <h2>📚 آکادمی آموزش زبان و آیلتس</h2>
+        <h2>📚 {{ config('site.name') }}</h2>
         <div>
             <a href="{{ route('app.page') }}" class="btn btn-success">📱 دریافتِ اپ</a>
             <a href="{{ url('/register') }}" class="btn btn-secondary" style="margin-left: 10px;">ثبت نام</a>
@@ -61,5 +63,6 @@
         @include('partials.catalog', ['canBuy' => false])
     </div>
 
+    @include('partials.footer')
 </body>
 </html>

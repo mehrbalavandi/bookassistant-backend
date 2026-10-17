@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // 🌟 PAY-2: درگاه نتیجه را با POST برمی‌گرداند و توکنِ CSRFِ ما را ندارد.
         $middleware->validateCsrfTokens(except: ['payment/callback/*']);
+        // 🌟 SITE-8: سرآیندهای امنیتی روی همه‌چیز (پنلِ ادمین هم)
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        // 🌟 SITE-4: حالتِ تعمیر برای سایت و API (پنلِ ادمین گروهِ میدل‌ویرِ خودش را دارد)
+        $middleware->appendToGroup('web', \App\Http\Middleware\SiteMaintenance::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\SiteMaintenance::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

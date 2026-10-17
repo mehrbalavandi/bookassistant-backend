@@ -1,44 +1,95 @@
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    @include('partials.favicon')
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ورود به آکادمی</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="{{ asset('css/persian-font.css') }}" rel="stylesheet" type="text/css" />
-    <style>body { font-family: var(--font-fa); }</style>
-</head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+{{-- 🌟 SITE-2: ورود با موبایل یا ایمیل. روشی که در پنل خاموش است دیده می‌شود ولی به‌جای فرم پیامِ «فعلاً فعال نیست» دارد. --}}
+@extends('layouts.site')
+@section('title', 'ورود یا ثبت‌نام')
+@section('noindex', '1')
 
-    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md">
-        <h2 class="text-2xl font-bold text-center text-slate-900 mb-6">ورود به حساب کاربری</h2>
+@section('content')
+@php
+    $tab = ! $methods['mobile'] && $methods['email'] ? 'email' : $tab;
+    $input = 'w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none';
+@endphp
+<div class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md mx-auto">
+    <h1 class="text-2xl font-bold text-center text-slate-900 mb-6">ورود یا ثبت‌نام</h1>
 
-        @if($errors->any())
-            <div class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">
-                {{ $errors->first() }}
-            </div>
-        @endif
+    @if($errors->any())
+        <div class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{{ $errors->first() }}</div>
+    @endif
+    @if(session('success'))
+        <div class="bg-emerald-50 text-emerald-700 p-3 rounded-lg text-sm mb-4">{{ session('success') }}</div>
+    @endif
 
-        <form action="{{ route('login') }}" method="POST" class="space-y-4">
-            @csrf
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">ایمیل</label>
-                <input type="email" name="email" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">رمز عبور</label>
-                <input type="password" name="password" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none">
-            </div>
-            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">ورود</button>
-        </form>
-
-        <a href="{{ route('login.otp') }}" class="block text-center w-full mt-4 border border-blue-600 text-blue-700 font-bold py-3 rounded-xl hover:bg-blue-50 transition">ورود یا ثبت‌نام با شماره‌ی موبایل</a>
-
-        <p class="text-center text-sm text-slate-500 mt-6">
-            حساب کاربری ندارید؟ <a href="{{ route('login.otp') }}" class="text-blue-600 font-bold">با موبایل ثبت‌نام کنید</a>
-        </p>
+    <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl mb-6" role="tablist">
+        <button type="button" data-tab="mobile" class="tab-btn py-2 rounded-lg text-sm font-bold">📱 موبایل</button>
+        <button type="button" data-tab="email" class="tab-btn py-2 rounded-lg text-sm font-bold">✉️ ایمیل</button>
     </div>
 
-</body>
-</html>
+    {{-- موبایل --}}
+    <section data-panel="mobile" class="tab-panel">
+        @if($methods['mobile'])
+            <p class="text-sm text-slate-500 mb-4 leading-7">کدِ ورود برایتان پیامک می‌شود. اگر حساب ندارید، همین‌جا ساخته می‌شود؛ همان حسابی که در برنامه دارید.</p>
+            <form action="{{ route('login.otp.request') }}" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">شماره‌ی موبایل</label>
+                    <input type="tel" name="mobile" value="{{ old('mobile') }}" placeholder="09121234567" dir="ltr" inputmode="numeric" autocomplete="tel" required class="{{ $input }} text-left">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">دریافتِ کد</button>
+            </form>
+        @else
+            <div class="bg-amber-50 text-amber-800 p-4 rounded-lg text-sm leading-7">{{ $methods['messages']['mobile'] }}
+                @if($methods['email']) <button type="button" data-tab="email" class="tab-btn-link text-blue-700 font-bold">ورود با ایمیل</button>@endif
+            </div>
+        @endif
+    </section>
+
+    {{-- ایمیل --}}
+    <section data-panel="email" class="tab-panel">
+        @if($methods['email'])
+            <form action="{{ route('login') }}" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ایمیل</label>
+                    <input type="email" name="email" value="{{ old('email') }}" dir="ltr" autocomplete="email" required class="{{ $input }}">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-sm font-medium text-slate-700">رمز عبور</label>
+                        <a href="{{ route('password.request') }}" class="text-xs text-blue-600">رمز را فراموش کرده‌اید؟</a>
+                    </div>
+                    <input type="password" name="password" dir="ltr" autocomplete="current-password" required class="{{ $input }}">
+                </div>
+                <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="remember" value="1" checked> مرا به خاطر بسپار</label>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">ورود</button>
+            </form>
+            <p class="text-center text-sm text-slate-500 mt-5">
+                حساب ندارید؟
+                @if($methods['registration'])
+                    <a href="{{ route('register') }}" class="text-blue-600 font-bold">ثبت‌نام با ایمیل</a>
+                @else
+                    <span>{{ $methods['messages']['registration'] }}</span>
+                @endif
+            </p>
+        @else
+            <div class="bg-amber-50 text-amber-800 p-4 rounded-lg text-sm leading-7">{{ $methods['messages']['email'] }}
+                @if($methods['mobile']) <button type="button" data-tab="mobile" class="tab-btn-link text-blue-700 font-bold">ورود با موبایل</button>@endif
+            </div>
+            <p class="text-center text-xs text-slate-400 mt-4"><a href="{{ route('filament.admin.auth.login') }}">ورودِ مدیران</a></p>
+        @endif
+    </section>
+</div>
+
+<script>
+    (function () {
+        const set = (t) => {
+            document.querySelectorAll('.tab-panel').forEach(p => p.hidden = p.dataset.panel !== t);
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                const on = b.dataset.tab === t;
+                b.className = 'tab-btn py-2 rounded-lg text-sm font-bold ' + (on ? 'bg-white shadow text-slate-900' : 'text-slate-500');
+                b.setAttribute('aria-selected', on);
+            });
+        };
+        document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => set(b.dataset.tab)));
+        set(@json($tab));
+    })();
+</script>
+@endsection
