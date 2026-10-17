@@ -38,6 +38,9 @@ class AdminPanelProvider extends PanelProvider
                 .e((string) config('site.name')).'</span>'
             ))
             ->brandLogoHeight('2.25rem')
+            // 🌟 PAY-8: زنگوله‌ی اعلان‌ها (مثلاً «رسیدِ کارت‌به‌کارتِ تازه»)
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->favicon(asset('favicon.ico'))
             ->colors([
                 'primary' => Color::Amber,

@@ -49,6 +49,7 @@
         <h2>👋 خوش آمدید، {{ Auth::user()->name }} عزیز</h2>
         <div>
             <a href="{{ route('app.page') }}" class="btn btn-success" style="width: auto;">📱 دریافتِ اپ</a>
+            <a href="{{ route('orders.index') }}" class="btn" style="width: auto; background:#e0e7ff; color:#3730a3;">🧾 سفارش‌های من</a>
             <form action="{{ url('/logout') }}" method="POST" style="display: inline;">
                 @csrf
                 <button type="submit" class="btn btn-danger">خروج از حساب</button>

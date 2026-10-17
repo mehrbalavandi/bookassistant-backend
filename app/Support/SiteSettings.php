@@ -101,6 +101,8 @@ final class SiteSettings
         'shop.card.review_hint' => 'text',
         'shop.card.unique_max' => 'int',
         'shop.pay_link_minutes' => 'int',
+        'shop.pending_expire_hours' => 'int',
+        'shop.notify_email' => 'string',
 
         // دستگاه‌ها
         'devices.max_per_user' => 'int',

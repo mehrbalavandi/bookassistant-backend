@@ -90,7 +90,7 @@
                     </div>
                 @else
                     <a href="{{ route('checkout', $book->id) }}" class="btn btn-primary">
-                        پرداخت و فعال‌سازی
+                        خرید و فعال‌سازی
                     </a>
                 @endif
             </div>

@@ -29,6 +29,8 @@ class OrderService
     public function create(User $user, Book $book, string $method, string $source, ?string $ip): Order
     {
         $amount = (int) round($book->final_price);
+        // 🌟 PAY-7: سفارش‌های رهاشده‌ی قدیمی بسته شوند (تومانِ شناسه‌شان آزاد شود) — بی‌نیاز به cron.
+        $this->expireStale();
 
         Order::where('user_id', $user->id)->where('book_id', $book->id)
             ->where('method', $method)->where('status', Order::PENDING)
@@ -91,6 +93,50 @@ class OrderService
 
         // همه‌ی اعداد گرفته‌اند (بیش از unique_max سفارشِ بازِ هم‌قیمت): تصادفی، تکراری.
         return random_int(1, $max);
+    }
+
+    /**
+     * 🌟 PAY-6: روش‌های خریدِ فعال (پنل ← تنظیماتِ سایت ← فروش). سایت و اپ هر دو از همین.
+     *
+     * @return array{gateway: bool, card: bool}
+     */
+    public function methods(): array
+    {
+        return ['gateway' => (bool) config('shop.gateway_enabled'), 'card' => $this->cardInfo() !== null];
+    }
+
+    /** مشخصاتِ کارت برای کارت‌به‌کارت؛ null اگر خاموش است یا شماره‌ی کارت تنظیم نشده. */
+    public function cardInfo(): ?array
+    {
+        $c = (array) config('shop.card');
+        if (empty($c['enabled']) || empty($c['number'])) {
+            return null;
+        }
+
+        return [
+            'number' => preg_replace('/\D/', '', (string) $c['number']),
+            'holder' => $c['holder'] ?? null,
+            'bank' => $c['bank'] ?? null,
+            'sheba' => $c['sheba'] ?? null,
+            'hint' => $c['review_hint'] ?? null,
+        ];
+    }
+
+    /**
+     * 🌟 PAY-7: سفارش‌های «در انتظارِ پرداخت» که بیش از shop.pending_expire_hours ساعت مانده‌اند
+     * لغو می‌شوند (0 = خاموش). سفارشی که رسیدش فرستاده شده (در انتظارِ بررسی) دست نمی‌خورد.
+     * هم با هر سفارشِ تازه و هم با فرمانِ زمان‌بندی‌شده‌ی orders:expire اجرا می‌شود.
+     */
+    public function expireStale(): int
+    {
+        $hours = (int) config('shop.pending_expire_hours', 48);
+        if ($hours <= 0) {
+            return 0;
+        }
+
+        return Order::where('status', Order::PENDING)
+            ->where('created_at', '<', now()->subHours($hours))
+            ->update(['status' => Order::CANCELED, 'admin_note' => Order::AUTO_CANCEL_NOTE]);
     }
 
     /** لینکِ امضاشده‌ی شروعِ پرداخت (برای اپ: در مرورگر باز می‌شود، بدونِ نیاز به ورود). */
@@ -162,8 +208,43 @@ class OrderService
             'card_paid_at' => $data['paid_at'] ?? null,
             'receipt_path' => $receiptPath ?? $order->receipt_path,
         ])->save();
+        $this->notifyAdminsOfReceipt($order);
 
         return $order;
+    }
+
+    /**
+     * 🌟 PAY-8: رسیدِ تازه ← اعلان در پنلِ ادمین (زنگوله‌ی بالای پنل) و، اگر در تنظیمات ایمیلی
+     * داده شده، ایمیل. شکستِ اعلان هرگز ثبتِ رسید را خراب نمی‌کند.
+     */
+    private function notifyAdminsOfReceipt(Order $order): void
+    {
+        $order->loadMissing('user', 'book');
+        $title = 'رسیدِ کارت‌به‌کارتِ تازه';
+        $body = sprintf('%s — «%s» — %s تومان — کدِ پیگیری %s',
+            $order->user?->name ?: ('کاربر #'.$order->user_id), $order->book?->title,
+            number_format($order->amount), $order->card_tracking_code);
+        try {
+            $admins = User::where('is_admin', true)->get();
+            if ($admins->isNotEmpty() && \Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+                \Filament\Notifications\Notification::make()->title($title)->body($body)->warning()
+                    ->icon('heroicon-o-receipt-percent')
+                    ->actions([\Filament\Notifications\Actions\Action::make('review')->label('بررسی')
+                        ->url(\App\Filament\Resources\OrderResource::getUrl('index'))->markAsRead()])
+                    ->sendToDatabase($admins);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Order {$order->id} admin notification failed: ".$e->getMessage());
+        }
+        $email = trim((string) config('shop.notify_email'));
+        if ($email !== '') {
+            try {
+                \Illuminate\Support\Facades\Mail::raw($title."\n\n".$body."\n\n".url('/admin/orders'),
+                    fn ($m) => $m->to($email)->subject($title.' — '.config('site.name')));
+            } catch (\Throwable $e) {
+                Log::warning("Order {$order->id} admin email failed: ".$e->getMessage());
+            }
+        }
     }
 
     /** اهدای کتاب + پرداخت‌شده. ایدمپوتنت (دوبار صدا زدن ضرری ندارد). */

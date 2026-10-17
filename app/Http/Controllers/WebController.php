@@ -59,24 +59,7 @@ class WebController extends Controller
         return view('dashboard', $data);
     }
 
-    // ۲. خرید از سایت (PAY-2): سفارش ساخته می‌شود و کاربر به لینکِ امضاشده‌ی پرداخت
-    // می‌رود — همان مسیری که اپ هم استفاده می‌کند (PaymentController).
-    public function checkout(Request $request, Book $book, OrderService $orders)
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if ($user->purchasedBooks()->where('books.id', $book->id)->exists()) {
-            return redirect()->back()->with('error', 'شما قبلاً این کتاب را خریداری کرده‌اید.');
-        }
-
-        $order = $orders->create($user, $book, Order::METHOD_GATEWAY, 'web', $request->ip());
-        if ($order->status === Order::PAID) {
-            return redirect()->back()->with('success', 'این محصول برای شما فعال شد.');
-        }
-
-        return redirect()->to($orders->payUrl($order));
-    }
+    // خرید از سایت در WebShopController است (PAY-6).
 
     public function logout(Request $request)
     {

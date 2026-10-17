@@ -174,6 +174,16 @@ class SiteSettingsPage extends Page implements HasForms
     private function shopTab(): Tabs\Tab
     {
         return Tabs\Tab::make('فروش')->icon('heroicon-o-credit-card')->schema([
+            Placeholder::make('shop_warning')->hiddenLabel()
+                ->visible(fn (Get $get) => ! $get(self::field('shop.gateway_enabled')) && ! $get(self::field('shop.card.enabled')))
+                ->content(new HtmlString('<div style="color:#b45309;font-weight:600">⚠ هیچ روشِ خریدی روشن نیست: کاربران نه در سایت و نه در اپ نمی‌توانند کتابی بخرند.</div>')),
+            Section::make('روش‌های خرید')->description('هر روشی که روشن باشد در سایت و اپ پیشنهاد می‌شود؛ روشِ خاموش اصلاً نمایش داده نمی‌شود و سرور هم سفارشش را نمی‌پذیرد.')
+                ->columns(3)->schema([
+                    $this->int('shop.pending_expire_hours', 'لغوِ خودکارِ سفارشِ پرداخت‌نشده (ساعت)', 0, 720)
+                        ->helperText('0 = هرگز. سفارشی که رسیدش فرستاده شده لغو نمی‌شود.'),
+                    $this->text('shop.notify_email', 'ایمیلِ خبرِ رسیدِ تازه (اختیاری)')->email()
+                        ->helperText('اعلانِ پنل (زنگوله‌ی بالا) همیشه هست.'),
+                ]),
             Section::make('درگاهِ پرداخت')->columns(3)->schema([
                 $this->toggle('shop.gateway_enabled', 'پرداختِ اینترنتی'),
                 Select::make(self::field('shop.gateway'))->label('درگاه')->native(false)->required()

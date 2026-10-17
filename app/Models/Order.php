@@ -62,6 +62,28 @@ class Order extends Model
         return self::STATUS_LABELS[$this->status] ?? $this->status;
     }
 
+    /**
+     * 🌟 PAY-3/7: برای این سفارش می‌شود رسیدِ کارت‌به‌کارت فرستاد؟ لغوشده هم (مثلاً لغوِ خودکارِ
+     * مهلت، وقتی کاربر پول را واریز کرده ولی رسید را دیر فرستاده) — ادمین بررسی می‌کند.
+     */
+    public function canSubmitReceipt(): bool
+    {
+        if ($this->method !== self::METHOD_CARD) {
+            return false;
+        }
+
+        return in_array($this->status, [self::PENDING, self::AWAITING_REVIEW, self::REJECTED], true)
+            || ($this->status === self::CANCELED && $this->isAutoCanceled());
+    }
+
+    /** 🌟 PAY-7: یادداشتِ سفارشی که مهلتش تمام شده (OrderService::expireStale). */
+    public const AUTO_CANCEL_NOTE = 'لغوِ خودکار: پرداخت در مهلت انجام نشد.';
+
+    public function isAutoCanceled(): bool
+    {
+        return $this->status === self::CANCELED && $this->admin_note === self::AUTO_CANCEL_NOTE;
+    }
+
     public function toAppArray(): array
     {
         return [

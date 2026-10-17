@@ -21,6 +21,12 @@ return [
         'unique_max' => (int) env('CARD_UNIQUE_MAX', 999),
     ],
 
+    // 🌟 PAY-7: سفارشِ «در انتظارِ پرداخت» بعد از این چند ساعت خودکار لغو می‌شود (0 = هرگز).
+    'pending_expire_hours' => (int) env('ORDER_PENDING_EXPIRE_HOURS', 48),
+
+    // 🌟 PAY-8: رسیدِ کارت‌به‌کارتِ تازه به این ایمیل هم خبر داده می‌شود (خالی = فقط اعلانِ پنل).
+    'notify_email' => env('ORDER_NOTIFY_EMAIL', ''),
+
     // اعتبارِ لینکِ شروعِ پرداخت که به اپ داده می‌شود (دقیقه).
     'pay_link_minutes' => (int) env('PAY_LINK_MINUTES', 30),
 ];

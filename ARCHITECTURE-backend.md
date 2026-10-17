@@ -150,6 +150,13 @@ storage/app/private/books/{folder_name}/
   ‎`POST /api/password/forgot`‎؛ پاسخ همیشه یکسان)، `PageController.php` (‎`/page/{about|terms|privacy}`‎
   و ‎`/contact`‎). نماها روی `layouts/site.blade.php` (Tailwindِ محلی: `public/js/tailwind-browser-4.3.3.js`،
   بی‌وابستگی به CDN) با `partials/announcement` و `partials/footer`.
+- 🌟 PAY-6..8: `WebShopController.php` — خرید در سایت: ‎`/checkout/{book}`‎ (انتخابِ روش؛ فقط روش‌های
+  روشن: `OrderService::methods()`)، سفارش‌های من ‎`/orders`‎ و ‎`/orders/{order}`‎ (برای کارت‌به‌کارت:
+  مبلغِ دقیق با «تومانِ شناسه»، مشخصاتِ کارت و فرمِ رسید). `OrderService::cardInfo()` مشترکِ API و سایت.
+  `OrderService::expireStale()` سفارشِ «در انتظارِ پرداخت» را بعد از `shop.pending_expire_hours` با
+  `Order::AUTO_CANCEL_NOTE` لغو می‌کند (با هر سفارشِ تازه و فرمانِ ساعتیِ `orders:expire`)؛ کارت‌به‌کارتِ
+  خودکار-لغوشده هنوز رسید می‌پذیرد (`Order::canSubmitReceipt`). رسیدِ تازه ← اعلانِ پایگاه‌داده‌ایِ
+  Filament برای همه‌ی ادمین‌ها (زنگوله؛ جدولِ `notifications`) و اختیاری ایمیل به `shop.notify_email`.
 - `PaymentController.php` — `start` (لینکِ امضاشده ← فرمِ درگاه) و `callback`
   (برگشت از درگاه). در `callback` شناسه‌ی تراکنشِ برگشتی (Authority) باید با سفارش جور
   باشد؛ نتیجه در `resources/views/payment/result.blade.php` نمایش داده می‌شود. هیچ‌کدام

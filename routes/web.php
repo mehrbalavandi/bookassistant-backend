@@ -43,8 +43,14 @@ Route::get('/page/{slug}', [\App\Http\Controllers\PageController::class, 'show']
 Route::post('/logout', [WebAuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
-    // پاس دادن آیدی کتاب در URL — سفارش می‌سازد و به لینکِ امضاشده‌ی پرداخت می‌رود (PAY-2)
-    Route::get('/checkout/{book}', [WebController::class, 'checkout'])->name('checkout');
+    // 🌟 PAY-6: خرید در سایت — انتخابِ روش (درگاه یا کارت‌به‌کارت) و سفارش‌های من
+    Route::get('/checkout/{book}', [\App\Http\Controllers\WebShopController::class, 'checkout'])->name('checkout');
+    Route::post('/checkout/{book}', [\App\Http\Controllers\WebShopController::class, 'placeOrder'])
+        ->middleware('throttle:20,1')->name('checkout.store');
+    Route::get('/orders', [\App\Http\Controllers\WebShopController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [\App\Http\Controllers\WebShopController::class, 'show'])->whereNumber('order')->name('orders.show');
+    Route::post('/orders/{order}/receipt', [\App\Http\Controllers\WebShopController::class, 'receipt'])
+        ->whereNumber('order')->middleware('throttle:10,1')->name('orders.receipt');
 });
 
 // 🌟 PAY-2: شروعِ پرداخت با لینکِ امضاشده (اپ و سایت) و برگشت از درگاه. نشستِ وب لازم نیست.

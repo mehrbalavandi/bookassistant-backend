@@ -73,8 +73,7 @@ class OrderController extends Controller
     public function receipt(Request $request, Order $order): JsonResponse
     {
         abort_unless($order->user_id === $request->user()->id, 404);
-        if ($order->method !== Order::METHOD_CARD
-            || ! in_array($order->status, [Order::PENDING, Order::AWAITING_REVIEW, Order::REJECTED], true)) {
+        if (! $order->canSubmitReceipt()) {
             return response()->json(['success' => false, 'message' => 'برای این سفارش نمی‌شود رسید فرستاد.'], 422);
         }
         $data = $request->validate([
@@ -97,20 +96,9 @@ class OrderController extends Controller
         ]);
     }
 
-    /** null اگر کارت‌به‌کارت خاموش است یا شماره‌ی کارت تنظیم نشده. */
+    /** null اگر کارت‌به‌کارت خاموش است یا شماره‌ی کارت تنظیم نشده (OrderService::cardInfo). */
     private function cardInfo(): ?array
     {
-        $c = config('shop.card');
-        if (! $c['enabled'] || ! $c['number']) {
-            return null;
-        }
-
-        return [
-            'number' => preg_replace('/\D/', '', (string) $c['number']),
-            'holder' => $c['holder'],
-            'bank' => $c['bank'],
-            'sheba' => $c['sheba'],
-            'hint' => $c['review_hint'],
-        ];
+        return $this->orders->cardInfo();
     }
 }
