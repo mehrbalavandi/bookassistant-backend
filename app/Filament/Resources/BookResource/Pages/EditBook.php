@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BookResource\Pages;
 
 use App\Filament\Resources\BookResource;
 use App\Http\Controllers\Api\BookController;
+use App\Support\BookSampleSync;
 use App\Support\UploadLimits;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
@@ -121,7 +122,9 @@ class EditBook extends EditRecord
             ->modalCancelActionLabel('انصراف')
             ->form([
                 FileUpload::make('archive')
-                    ->label('فایلِ فشرده (ZIP یا RAR) — شاملِ index.json و پوشه‌های pages/ , audio/ , images/')
+                    ->label('فایلِ فشرده (ZIP یا RAR) — شاملِ index.json و پوشه‌های pages/ , audio/ , images/'
+                        // 🌟 SMP-1
+                        . ($scope === 'main' ? ' — اگر پوشه‌ی sample/ (نسخه‌ی نمونه‌ی اکسترکتور) هم داشته باشد، نمونه هم خودکار به‌روز می‌شود' : ''))
                     // 🐞 نوعِ MIMEی که مرورگرها برای RAR می‌فرستند یکسان نیست
                     // (vnd.rar، x-rar-compressed، و حتی octet-stream روی بعضی
                     // ویندوزها). برای همین فهرست را سخاوتمندانه می‌گیریم و
@@ -207,6 +210,11 @@ class EditBook extends EditRecord
                     $this->wipeScopeContent($scope);
                 }
 
+                // 🌟 SMP-1: هَشِ sample/index.json پیش از استخراج — اگر آرشیوِ اصلی پوشه‌ی
+                // sample/ (نمونه‌ای که اکسترکتور هم‌زمان ساخته) داشته باشد، پس از استخراج
+                // عوض می‌شود و نمونه هم خودکار ثبت می‌شود.
+                $sampleBefore = $scope === 'main' ? BookSampleSync::fingerprint($this->record) : null;
+
                 $targetAbs = Storage::disk('local')->path($this->scopeRoot($scope));
                 if (! is_dir($targetAbs)) {
                     mkdir($targetAbs, 0775, true);
@@ -242,6 +250,11 @@ class EditBook extends EditRecord
                     $this->columnFor($scope, 'images') => $imageFiles,
                 ]);
 
+                // 🌟 SMP-1: نمونه‌ی همراهِ آرشیوِ اصلی
+                $sampleSummary = $scope === 'main'
+                    ? BookSampleSync::syncIfChanged($this->record, $sampleBefore)
+                    : null;
+
                 if ($scope === 'sample') {
                     $this->record->increment('sample_version');
                 } else {
@@ -271,7 +284,9 @@ class EditBook extends EditRecord
                 //    آرشیو کنیم، کاربرِ اپ نسخه‌ی ناقص می‌گیرد. پس فقط در حالتِ
                 //    «جایگزینی» و وقتی آپلود ZIP بوده، همان فایل نگه داشته
                 //    می‌شود؛ در بقیه‌ی حالت‌ها آرشیو از رویِ دیسک ساخته می‌شود.
-                if ($ext === 'zip' && $mode === 'replace') {
+                // (SMP-1: آرشیوی که sample/ هم دارد مستقیم آرشیوِ اصلی نمی‌شود — آرشیوِ اصلی
+                // نباید نمونه را دوباره داخلِ خودش داشته باشد؛ ensureZip آن را کنار می‌گذارد.)
+                if ($ext === 'zip' && $mode === 'replace' && $sampleSummary === null) {
                     Storage::disk('local')->move($relPath, $archiveRel);
                     BookController::pruneOldZips($this->record, $scope, $archiveRel);
                 } else {
@@ -284,6 +299,7 @@ class EditBook extends EditRecord
                         'محتوای «' . ($scope === 'sample' ? 'نمونه' : 'اصلی') . '» '
                             . ($mode === 'replace' ? 'جایگزین' : 'بروزرسانی') . ' شد.'
                     )
+                    ->body($sampleSummary)
                     ->success()->send();
             });
     }

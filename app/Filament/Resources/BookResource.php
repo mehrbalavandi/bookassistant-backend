@@ -19,6 +19,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rules\Unique;
 
@@ -43,13 +44,31 @@ class BookResource extends Resource
                         ->helperText('مثال: ielts-book-1')
                         ->required()->live(),
 
+                    // 🌟 قیمت با جداکننده‌ی هزارگان نمایش داده می‌شود (۱,۲۵۰,۰۰۰)؛ ویرگول‌ها
+                    // پیش از اعتبارسنجی و ذخیره حذف می‌شوند، پس در DB همان عددِ خام است.
                     TextInput::make('price')
-                        ->label('قیمت (تومان)')->numeric()->required()->default(0)
+                        ->label('قیمت (تومان)')
+                        ->mask(RawJs::make("\$money(\$input, '.', ',', 0)"))
+                        ->stripCharacters(',')
+                        ->numeric()->minValue(0)->required()->default(0)
+                        ->extraInputAttributes(['dir' => 'ltr', 'inputmode' => 'numeric'])
+                        ->live(onBlur: true)
                         ->helperText('اگر رایگان است، 0'),
 
                     TextInput::make('discount')
                         ->label('درصد تخفیف')->numeric()->default(0)
-                        ->minValue(0)->maxValue(100),
+                        ->minValue(0)->maxValue(100)
+                        ->live(onBlur: true)
+                        // قیمتِ نهایی (همان که در ویترین و صفحه‌ی خرید دیده می‌شود)
+                        ->helperText(function (Get $get): ?string {
+                            $price = (int) preg_replace('/\D/', '', (string) $get('price'));
+                            $discount = max(0, min(100, (int) $get('discount')));
+                            if ($price <= 0 || $discount <= 0) {
+                                return null;
+                            }
+                            $final = (int) round($price * (100 - $discount) / 100);
+                            return 'قیمتِ پس از تخفیف: ' . number_format($final) . ' تومان';
+                        }),
                 ]),
             ]),
 
