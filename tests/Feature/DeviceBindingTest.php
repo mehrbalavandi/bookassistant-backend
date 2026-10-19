@@ -211,6 +211,7 @@ class DeviceBindingTest extends TestCase
         $this->assertSame('h1-device-aaaa', $payload['did']);
         $this->assertSame([(string) $this->book->id], $payload['books']);
         $this->assertEqualsWithDelta(time() + 30 * 86400, $payload['exp'], 5);
+        $this->assertSame(30, $payload['gd'], 'DEV-7: مهلتِ بعد از خروج = فاصله‌ی جدا کردنِ دستگاه');
 
         // دست‌کاری‌شده: نامعتبر.
         $forged = $login->json('license');

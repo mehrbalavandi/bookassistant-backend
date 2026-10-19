@@ -72,6 +72,11 @@ class LicenseService
                 ->map(fn ($id) => (string) $id)->values()->all(),
             'iat' => $now,
             'exp' => $now + max(1, (int) config('devices.license.days', 30)) * 86400,
+            // 🌟 DEV-7: بعد از «خروج از حساب» به دستِ خودِ کاربر، کتاب‌های خریده‌شده‌ی دانلودشده
+            // تا این‌همه روز (و نه بیش از exp) روی همین دستگاه باز می‌مانند — مثلاً وقتی بی‌اینترنت
+            // اشتباهی خارج شده. همان «فاصله‌ی جدا کردنِ دستگاه»، چون کاربر زودتر از آن هم
+            // نمی‌تواند دستگاه را آزاد کند. 0 = بی‌مهلت (بعد از خروج قفل).
+            'gd' => max(0, (int) config('devices.release_cooldown_days', 30)),
         ];
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
