@@ -10,6 +10,7 @@
         <nav style="display:flex;flex-wrap:wrap;gap:4px 16px;align-items:flex-start">
             <a href="{{ route('page', 'about') }}" style="color:#2563eb;text-decoration:none">درباره‌ی ما</a>
             <a href="{{ route('contact') }}" style="color:#2563eb;text-decoration:none">تماس با ما</a>
+            <a href="{{ route('feedback.index') }}" style="color:#2563eb;text-decoration:none">انتقادات و پیشنهادات</a>
             <a href="{{ route('page', 'terms') }}" style="color:#2563eb;text-decoration:none">قوانین و مقررات</a>
             <a href="{{ route('page', 'privacy') }}" style="color:#2563eb;text-decoration:none">حریمِ خصوصی</a>
             <a href="{{ route('app.page') }}" style="color:#2563eb;text-decoration:none">دریافتِ اپ</a>

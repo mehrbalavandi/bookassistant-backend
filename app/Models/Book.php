@@ -90,6 +90,16 @@ class Book extends Model
         return $path !== '' && Storage::disk('local')->exists($path);
     }
 
+    /**
+     * 🌟 SF-4: محتوای اصلی (index.jsonِ نسخه‌ی کامل) روی سرور هست. کتابِ بی‌محتوا خریدنی نیست؛
+     * ویترینِ سایت و اپ «در حالِ آماده‌سازی» نشان می‌دهند و سفارش هم پذیرفته نمی‌شود.
+     */
+    public function hasContent(): bool
+    {
+        $path = trim((string) $this->json_file);
+        return $path !== '' && Storage::disk('local')->exists($path);
+    }
+
     /** 🌟 SF-1: جلد واقعاً روی سرور هست. */
     public function hasCover(): bool
     {

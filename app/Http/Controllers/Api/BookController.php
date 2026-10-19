@@ -90,6 +90,8 @@ class BookController extends Controller
             // 🌟 SF-1: آنچه اپ پیش از خرید یا دانلودِ نمونه نشان می‌دهد.
             // has_sample: دکمه‌ی «دریافت نمونه» فقط وقتی نمونه واقعاً روی سرور هست فعال است.
             $book->has_sample = $book->hasSample();
+            // 🌟 SF-4: بی‌محتوا ← اپ به‌جای «خرید» می‌نویسد «در حالِ آماده‌سازی».
+            $book->has_content = $book->hasContent();
             $book->final_price = (int) round($book->final_price);
             $book->page_count = $book->pageCount();
             $book->audio_count = count($book->audio_files ?? []);

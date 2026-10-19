@@ -24,6 +24,9 @@ class WebShopController extends Controller
         if ($user->purchasedBooks()->where('books.id', $book->id)->exists()) {
             return redirect()->route('home')->with('error', 'شما قبلاً این کتاب را خریداری کرده‌اید.');
         }
+        if (! $book->hasContent()) { // 🌟 SF-4
+            return redirect()->route('home')->with('error', 'این کتاب هنوز در حالِ آماده‌سازی است.');
+        }
 
         return view('shop.checkout', [
             'book' => $book,
@@ -41,6 +44,9 @@ class WebShopController extends Controller
         $user = Auth::user();
         if ($user->purchasedBooks()->where('books.id', $book->id)->exists()) {
             return redirect()->route('home')->with('error', 'شما قبلاً این کتاب را خریداری کرده‌اید.');
+        }
+        if (! $book->hasContent()) { // 🌟 SF-4
+            return redirect()->route('home')->with('error', 'این کتاب هنوز در حالِ آماده‌سازی است.');
         }
         if (! ($this->orders->methods()[$data['method']] ?? false)) {
             return back()->with('error', $data['method'] === Order::METHOD_CARD
@@ -61,7 +67,7 @@ class WebShopController extends Controller
     public function index()
     {
         return view('shop.orders', [
-            'orders' => Auth::user()->orders()->with('book:id,title')->latest('id')->limit(50)->get(),
+            'orders' => Auth::user()->visibleOrders()->with('book:id,title')->latest('id')->limit(50)->get(),
         ]);
     }
 

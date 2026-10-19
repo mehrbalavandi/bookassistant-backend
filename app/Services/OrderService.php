@@ -258,7 +258,28 @@ class OrderService
                 'reviewed_at' => $reviewer ? now() : $order->reviewed_at,
             ])->save();
             $order->user->purchasedBooks()->syncWithoutDetaching([$order->book_id]);
+            $this->purgeAbandoned($order->user_id, $order->book_id, $order->id);
         });
+    }
+
+    /** 🌟 PAY-8: وضعیت‌های «تلاشِ ناتمام» — بی‌رسید، بی‌پرداخت؛ چیزی برای نگه‌داشتن ندارند. */
+    public const ABANDONED_STATUSES = [Order::PENDING, Order::CANCELED, Order::FAILED];
+
+    /**
+     * 🌟 PAY-8: کتاب خریده شد ← سفارش‌های ناتمامِ دیگرِ همین کاربر برای همین کتاب (مثلاً
+     * کارت‌به‌کارتی که رسیدش هرگز فرستاده نشد، یا درگاهی که نیمه‌کاره ماند) حذف می‌شوند تا در
+     * «سفارش‌های من» «در انتظارِ پرداخت» نمانند. سفارشِ «در انتظارِ بررسی» (رسید فرستاده شده،
+     * شاید پول واریز شده) و «ردشده» (تصمیمِ ادمین) می‌مانند.
+     *
+     * @return int تعدادِ حذف‌شده‌ها
+     */
+    public function purgeAbandoned(int $userId, int $bookId, ?int $exceptOrderId = null): int
+    {
+        return Order::where('user_id', $userId)->where('book_id', $bookId)
+            ->whereIn('status', self::ABANDONED_STATUSES)
+            ->when($exceptOrderId, fn ($q) => $q->whereKeyNot($exceptOrderId))
+            ->whereNull('receipt_path')
+            ->delete();
     }
 
     /** تأییدِ ادمین برای کارت‌به‌کارت؛ پیامکِ اطلاع (اگر قالبش تنظیم شده). */

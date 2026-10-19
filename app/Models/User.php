@@ -88,6 +88,26 @@ class User extends Authenticatable implements \Filament\Models\Contracts\Filamen
         return $this->hasMany(Order::class);
     }
 
+    /** 🌟 FB-1: انتقادات، پیشنهادات و گزارش‌های ایرادِ این کاربر. */
+    public function feedback()
+    {
+        return $this->hasMany(Feedback::class);
+    }
+
+    /**
+     * 🌟 PAY-8: «سفارش‌های من» (سایت و اپ) — بی‌سفارش‌های ناتمامِ کتاب‌هایی که کاربر دیگر دارد
+     * (مثلاً بعد از فعال‌سازیِ دستیِ ادمین، یا داده‌ی پیش از PAY-8).
+     */
+    public function visibleOrders()
+    {
+        $owned = $this->purchasedBooks()->pluck('books.id');
+
+        return $this->orders()->where(fn ($q) => $q
+            ->whereNotIn('status', \App\Services\OrderService::ABANDONED_STATUSES)
+            ->orWhereNotIn('book_id', $owned)
+            ->orWhereNotNull('receipt_path'));
+    }
+
     /** خروجیِ یکسانِ «کاربر» برای اپ (ورود، /me). */
     public function toAppArray(): array
     {

@@ -80,7 +80,12 @@
                     @endif
                 </div>
 
-                @if(! $canBuy)
+                @if(! $book->is_purchased && ! $book->has_content)
+                    {{-- 🌟 SF-4: کتابِ بی‌محتوا خریدنی نیست --}}
+                    <div class="btn" style="display: block; margin-top: 15px; background:#f1f5f9; color:#64748b; cursor:default;">
+                        ⏳ در حالِ آماده‌سازی
+                    </div>
+                @elseif(! $canBuy)
                     <a href="{{ url('/login') }}" class="btn btn-primary" style="display: block; margin-top: 15px;">
                         ورود و خرید کتاب
                     </a>

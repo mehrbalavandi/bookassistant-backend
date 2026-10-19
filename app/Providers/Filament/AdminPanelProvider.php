@@ -166,6 +166,29 @@ class AdminPanelProvider extends PanelProvider
                 </style>
                 HTML)
             )
+            // 🐞 «419 | PAGE EXPIRED» در پنجره‌ی سفید: نشست تمام شده بود (یا توکنِ CSRF کهنه شده بود)
+            // و Livewire پاسخِ خطای هر درخواست — حتی بررسیِ خودکارِ اعلان‌ها هر ۳۰ ثانیه — را در
+            // یک مودال نشان می‌داد. حالا ۴۱۹ نمایش داده نمی‌شود؛ صفحه یک‌بار از نو بار می‌شود:
+            // اگر نشست هنوز هست با توکنِ تازه برمی‌گردد، وگرنه صفحه‌ی ورود می‌آید.
+            ->renderHook(
+                'panels::body.end',
+                fn(): HtmlString => new HtmlString(<<<'HTML'
+                <script>
+                    document.addEventListener('livewire:init', () => {
+                        let reloading = false;
+                        Livewire.hook('request', ({ fail }) => {
+                            fail(({ status, preventDefault }) => {
+                                if (status !== 419) return;
+                                preventDefault();
+                                if (reloading) return;
+                                reloading = true;
+                                window.location.reload();
+                            });
+                        });
+                    });
+                </script>
+                HTML)
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

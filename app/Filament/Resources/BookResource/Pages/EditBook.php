@@ -59,6 +59,16 @@ class EditBook extends EditRecord
 
     // ───────────────────────── helpers ─────────────────────────
 
+    /**
+     * 🌟 بعد از آپلود/حذفِ محتوا، صفحه‌ی ویرایش از نو بار می‌شود تا شماره‌ی نسخه‌ها، فهرستِ
+     * فایل‌ها و بقیه‌ی فیلدهایی که اکشن عوض کرده، مقدارِ تازه را نشان دهند (و «ذخیره»ی بعدی
+     * مقدارِ کهنه را رویشان ننویسد). اعلانِ اکشن بعد از بارگذاری هم دیده می‌شود.
+     */
+    private function reloadPage(): void
+    {
+        $this->redirect(static::getResource()::getUrl('edit', ['record' => $this->record]));
+    }
+
     private function scopeRoot(string $scope): string
     {
         $folder = $this->record->folder_name;
@@ -301,6 +311,8 @@ class EditBook extends EditRecord
                     )
                     ->body($sampleSummary)
                     ->success()->send();
+
+                $this->reloadPage();
             });
     }
 
@@ -484,6 +496,8 @@ class EditBook extends EditRecord
                 Notification::make()
                     ->title('«' . $this->assetLabel($scope, $kind) . '» حذف شد.')
                     ->success()->send();
+
+                $this->reloadPage();
             });
     }
 
@@ -539,6 +553,8 @@ class EditBook extends EditRecord
                 Notification::make()
                     ->title(count($selected) . ' فایل از «' . $this->assetLabel($scope, $kind) . '» حذف شد.')
                     ->success()->send();
+
+                $this->reloadPage();
             });
     }
 

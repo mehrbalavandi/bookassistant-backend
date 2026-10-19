@@ -31,7 +31,7 @@ class OrderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $orders = $request->user()->orders()->with('book:id,title')->latest('id')->limit(30)->get();
+        $orders = $request->user()->visibleOrders()->with('book:id,title')->latest('id')->limit(30)->get();
 
         return response()->json(['success' => true, 'orders' => $orders->map->toAppArray()]);
     }
@@ -47,6 +47,9 @@ class OrderController extends Controller
 
         if ($user->purchasedBooks()->where('books.id', $book->id)->exists()) {
             return response()->json(['success' => false, 'message' => 'این کتاب را قبلاً خریده‌اید.'], 409);
+        }
+        if (! $book->hasContent()) { // 🌟 SF-4
+            return response()->json(['success' => false, 'message' => 'این کتاب هنوز در حالِ آماده‌سازی است و فعلاً خریدنی نیست.'], 422);
         }
         if ($data['method'] === Order::METHOD_GATEWAY && ! config('shop.gateway_enabled')) {
             return response()->json(['success' => false, 'message' => 'پرداختِ اینترنتی فعلاً فعال نیست.'], 422);

@@ -25,6 +25,23 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+        // 🌟 SITE-9: فرمِ سایت با توکنِ CSRFِ کهنه (صفحه مدت‌ها باز مانده، یا نشست تمام شده):
+        // به‌جای صفحه‌ی «419 | PAGE EXPIRED»، برگشت به همان فرم با مقدارهای واردشده و یک پیام.
+        // (پنلِ ادمین ۴۱۹ِ Livewire را خودش با بارگذاریِ دوباره‌ی صفحه حل می‌کند.)
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, Request $request) {
+            if ($e->getStatusCode() !== 419 || $request->is('api/*') || $request->expectsJson()
+                || $request->hasHeader('X-Livewire')) {
+                return null;
+            }
+            $back = url()->previous();
+            if (! $back || $back === $request->fullUrl()) {
+                return null; // صفحه‌ی errors/419
+            }
+
+            return redirect()->to($back)
+                ->withInput($request->except(['password', 'password_confirmation', 'current_password', '_token']))
+                ->withErrors(['session' => 'مهلتِ صفحه تمام شده بود. لطفاً دوباره بفرستید.']);
+        });
         // 🌟 DEV-1: ۴۰۱ِ API دلیل را هم می‌گوید (device_revoked، device_mismatch، unbound، …)
         // تا اپ بداند فقط دوباره وارد شود یا محتوای کاملِ کتاب‌ها را هم پاک کند.
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, Request $request) {

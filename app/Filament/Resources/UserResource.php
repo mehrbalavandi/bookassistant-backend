@@ -74,6 +74,8 @@ class UserResource extends Resource
                     TextInput::make('email')
                         ->label('ایمیل')
                         ->email()
+                        // مرورگر ایمیلِ خودِ ادمین را (همراهِ رمزش) در فرمِ کاربرِ دیگر پر نکند.
+                        ->autocomplete('off')
                         ->extraInputAttributes(['dir' => 'ltr'])
                         ->dehydrateStateUsing(fn ($state) => filled($state) ? $state : null)
                         ->unique(table: 'users', column: 'email', ignoreRecord: true),
@@ -95,8 +97,11 @@ class UserResource extends Resource
                         ->minLength(1)
                         ->maxLength(255)
                         ->formatStateUsing(fn () => null)
+                        // 🐞 «12345678» در این فیلد کارِ مرورگر بود: رمزِ ذخیره‌شده‌ی خودِ ادمین را
+                        // خودکار پر می‌کرد. new-password یعنی «رمزِ تازه»، پس پر نمی‌شود.
+                        ->autocomplete('new-password')
                         ->dehydrated(fn ($state) => filled($state))
-                        ->helperText('خالی بگذارید تا رمزِ فعلی عوض نشود.'),
+                        ->helperText('خالی بگذارید تا رمزِ فعلی عوض نشود. رمزِ فعلی نمایش داده نمی‌شود: فقط هَشِ یک‌طرفه‌اش ذخیره است.'),
                 ]),
 
             Section::make('خریدها')->schema([

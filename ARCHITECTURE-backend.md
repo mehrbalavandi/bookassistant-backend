@@ -58,8 +58,8 @@ storage/app/private/books/{folder_name}/
 
 | فایل | محتوا |
 |---|---|
-| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/cover`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. `/auth/device/replace` (جایگزینیِ دستگاه با بلیت)، `/study/shared` (مرورِ آماده). پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices` (GET/POST)، `/devices/{device}` (DELETE)، `/license`، `/orders` (GET/POST)، `/orders/{order}/receipt`. |
-| `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود (ایمیل و `/login/otp`)، `checkout/{book}` (سفارش می‌سازد)، `/pay/{order}` (لینکِ امضاشده ← درگاه)، `/payment/callback/{order}` (برگشت از درگاه، بی‌CSRF)، `admin.book-asset` و `admin.order-receipt` (فقط ادمین)، و `/app` + `/app/download/{platform}`. |
+| `api.php` | مصرف‌کننده: اپِ فلاتر. عمومی: `/auth/otp/request`، `/auth/otp/verify` (ورود با موبایل، با سقفِ درخواست)، `/register`، `/login` (حساب‌های ایمیلیِ قدیمی)، `/books`، `/books/{book}/cover`، `/books/{book}/download`، `/books/{book}/zip-info`، `/books/{book}/download-zip`، `/app/latest`، `/shop/options`. `/auth/device/replace` (جایگزینیِ دستگاه با بلیت)، `/study/shared` (مرورِ آماده). پشتِ Sanctum: `/logout`، `/me` (GET/PATCH)، `/me/mobile`، `/backup/study/sync`، `/backup/settings` (GET/PUT)، `/devices` (GET/POST)، `/devices/{device}` (DELETE)، `/license`، `/orders` (GET/POST)، `/orders/{order}/receipt`، `/feedback` (GET/POST)، `/feedback/seen`. |
+| `web.php` | سایت: صفحه‌ی اصلی، ثبت‌نام، ورود (ایمیل و `/login/otp`)، `checkout/{book}` (سفارش می‌سازد)، `/pay/{order}` (لینکِ امضاشده ← درگاه)، `/payment/callback/{order}` (برگشت از درگاه، بی‌CSRF)، `admin.book-asset` و `admin.order-receipt` (فقط ادمین)، `/feedback` و `feedback.attachment` (FB-1)، و `/app` + `/app/download/{platform}`. |
 
 ### API (`app/Http/Controllers/Api/`)
 
@@ -405,6 +405,50 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
     برگردانده می‌شوند.
 - **پشتیبانِ «مرورِ من»:** `kind=tip` را هم می‌پذیرد. فیلدهای اضافه در `x`ِ همان payload‌اند.
 - **تست‌ها:** `tests/Feature/SharedStudyItemsTest.php`.
+
+### انتقادات و پیشنهادات (FB-1)
+
+- **مدل‌ها:** `Feedback` (نوع: گزارشِ ایراد/پیشنهاد/انتقاد/سایر، موضوع، شرح، کتاب، منبع و نسخه‌ی اپ،
+  وضعیت، پاسخِ ادمین) و `FeedbackAttachment` (تا ۵ تصویر، هرکدام ۵MB، دیسکِ خصوصی `feedback/{id}/`).
+  حذفِ پیام پوشه‌ی تصویرهایش را هم پاک می‌کند.
+- **سایت:** `/feedback` (فقط واردشده): فرم با تصویر + «پیام‌های من» با پاسخِ ادمین؛ پیوند در منوی
+  بالا و پانویس. تصویر فقط برای صاحبِ پیام و ادمین سرو می‌شود (`feedback.attachment`).
+- **API:** `GET /api/feedback` (فهرست، `unseen` = پاسخ‌های ندیده)، `POST /api/feedback` (multipart،
+  `images[]`)، `POST /api/feedback/seen`.
+- **پنل:** «انتقادات و پیشنهادات» (`FeedbackResource`): شمارِ پیام‌های تازه روی منو؛ بازکردن = «در حالِ
+  بررسی»؛ پاسخ و وضعیت. پیامِ تازه اعلانِ زنگوله (و ایمیلِ `shop.notify_email`) می‌فرستد.
+- **قانون‌ها:** `FeedbackService::rules()` برای سایت و اپ یکی است.
+
+### پشتیبان‌گیری (BKP-1)
+
+- **`SiteBackupService`:** یک ZIP در `storage/app/private/backups`: `manifest.json` + `db/<جدول>.jsonl`
+  (هر ردیف یک خط) + `files/` (رسیدها، تصویرهای پیام‌ها، جلدها).
+  - جدول‌ها: کاربران، دسته‌ها، کتاب‌ها، خریدها، دستگاه‌ها، تنظیمات و «مرورِ من»ِ کاربران، سفارش‌ها،
+    «مرورِ آماده»، تنظیماتِ سایت، نسخه‌های اپ، محتوا، پیام‌ها.
+  - عمداً نه: محتوای کتاب‌ها (`books/`)، فایل‌های نصبیِ اپ، نشست/کش/صف/کدهای پیامکی/توکن‌ها/اعلان‌ها.
+  - **بازگردانی:** اول پشتیبانِ ایمنی (`…-before-restore.zip`)، بعد هر جدولِ داخلِ پشتیبان خالی و پر
+    می‌شود (FK خاموش، یک تراکنش؛ ستون‌های ناشناخته کنار گذاشته می‌شوند)، بعد فایل‌ها.
+  - تنظیماتِ مخفی با APP_KEY رمز شده‌اند؛ روی سروری با APP_KEYِ دیگر دوباره باید وارد شوند.
+- **پنل** («پشتیبان‌گیری»، `BackupsPage`): ساختن، دانلود، آپلود (از سرورِ دیگر)، حذف، بازگردانی (با
+  نوشتنِ «بازگردانی»)، تنظیمِ پشتیبانِ خودکار (`backup.daily`، `backup.keep` در SiteSettings).
+- **خودکار:** `php artisan site:backup` هر شب ۳:۳۰ (`routes/console.php`)، بعد پاک‌کردنِ قدیمی‌ها.
+- **تست‌ها:** `tests/Feature/SiteBackupTest.php`.
+
+### ریزه‌کاری‌های فروشگاه و پنل
+
+- **PAY-8:** `OrderService::grant` سفارش‌های ناتمامِ دیگرِ همان کاربر/کتاب (در انتظارِ پرداخت،
+  لغوشده، ناموفق؛ بی‌رسید) را حذف می‌کند. «سفارش‌های من» (`User::visibleOrders`) سفارش‌های ناتمامِ
+  کتاب‌هایی را که کاربر از راهِ دیگر دارد نشان نمی‌دهد. migrationِ `purge_abandoned_orders_of_owned_books`
+  داده‌ی قبلی را پاک کرد. «در انتظارِ بررسی» (رسید فرستاده شده) و «ردشده» می‌مانند.
+- **SF-4:** `Book::hasContent()` (index.jsonِ اصلی روی دیسک). بی‌محتوا ← API `has_content=false`،
+  ویترینِ سایت «در حالِ آماده‌سازی»، checkout و `POST /api/orders` رد (۴۲۲).
+- **SITE-9:** فرمِ سایت با توکنِ CSRFِ کهنه ← برگشت به همان فرم با مقدارها و پیامِ «مهلتِ صفحه تمام
+  شده بود» (`bootstrap/app.php`)، وگرنه `errors/419`. در پنل، ۴۱۹ِ Livewire (حتی بررسیِ خودکارِ
+  اعلان‌ها) مودال نمی‌شود؛ صفحه یک‌بار از نو بار می‌شود (render hookِ `panels::body.end`).
+- **ویرایشِ کاربر:** فیلدِ «رمزِ تازه» `autocomplete="new-password"` و ایمیل `off` دارند، تا مرورگر رمز
+  و ایمیلِ ذخیره‌شده‌ی خودِ ادمین را در فرمِ کاربرِ دیگر پر نکند. رمزِ فعلی قابلِ نمایش نیست (فقط هَش).
+- **صفحه‌ی ویرایشِ کتاب:** بعد از آپلود/حذفِ محتوا صفحه از نو بار می‌شود، تا شماره‌ی نسخه‌ها و فهرستِ
+  فایل‌ها تازه باشند و «ذخیره»ی بعدی مقدارِ کهنه را رویشان ننویسد.
 
 ### میدل‌ویرها
 

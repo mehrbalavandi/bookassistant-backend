@@ -65,4 +65,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:20,1');
     Route::post('/orders/{order}/receipt', [OrderController::class, 'receipt'])->middleware('throttle:10,1');
+
+    // 🌟 FB-1: انتقادات و پیشنهادات / گزارشِ ایراد
+    Route::get('/feedback', [\App\Http\Controllers\Api\FeedbackController::class, 'index']);
+    Route::post('/feedback', [\App\Http\Controllers\Api\FeedbackController::class, 'store'])->middleware('throttle:10,60');
+    Route::post('/feedback/seen', [\App\Http\Controllers\Api\FeedbackController::class, 'seen']);
 });

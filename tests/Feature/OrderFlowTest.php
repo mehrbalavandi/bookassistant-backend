@@ -21,7 +21,8 @@ class OrderFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->book = Book::create(['title' => 'Mindset 01', 'folder_name' => 'mindset-01', 'price' => 200000, 'discount' => 10]);
+        Storage::fake('local');
+        $this->book = $this->bookWithContent(['title' => 'Mindset 01', 'folder_name' => 'mindset-01', 'price' => 200000, 'discount' => 10]);
         config([
             'shop.card.enabled' => true,
             'shop.card.number' => '6037-9911-2233-4455',
@@ -31,7 +32,6 @@ class OrderFlowTest extends TestCase
 
     public function test_card_transfer_flow_until_admin_approval(): void
     {
-        Storage::fake('local');
         $user = User::factory()->create(['mobile' => '09121234567']);
 
         $r = $this->actingAs($user)->postJson('/api/orders', ['book_id' => $this->book->id, 'method' => 'card'])
@@ -93,7 +93,7 @@ class OrderFlowTest extends TestCase
         $this->actingAs($user)->postJson('/api/orders', ['book_id' => $this->book->id, 'method' => 'gateway']);
         $this->assertSame(Order::CANCELED, Order::find($first)->status);
 
-        $free = Book::create(['title' => 'Free', 'folder_name' => 'free', 'price' => 0]);
+        $free = $this->bookWithContent(['title' => 'Free', 'folder_name' => 'free', 'price' => 0]);
         $this->actingAs($user)->postJson('/api/orders', ['book_id' => $free->id, 'method' => 'gateway'])
             ->assertCreated()->assertJsonPath('order.status', Order::PAID);
         $this->assertTrue($user->purchasedBooks()->where('books.id', $free->id)->exists());
@@ -121,7 +121,6 @@ class OrderFlowTest extends TestCase
 
     public function test_receipt_image_is_admin_only(): void
     {
-        Storage::fake('local');
         $user = User::factory()->create();
         $order = Order::create([
             'user_id' => $user->id, 'book_id' => $this->book->id, 'amount' => 1, 'method' => 'card',

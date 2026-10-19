@@ -23,7 +23,8 @@ class WebController extends Controller
         }
 
         // 🌟 اضافه کردن قیمت و تخفیف به کوئری
-        $books = Book::select('id', 'title', 'folder_name', 'price', 'discount', 'category_id', 'sort_order')
+        // json_file برای SF-4 (کتابِ بی‌محتوا ← «در حالِ آماده‌سازی»)
+        $books = Book::select('id', 'title', 'folder_name', 'price', 'discount', 'category_id', 'sort_order', 'json_file')
             ->with('category:id,title,description,sort_order')
             ->get();
         $purchasedBookIds = [];
@@ -36,6 +37,8 @@ class WebController extends Controller
 
         $books->transform(function ($book) use ($purchasedBookIds) {
             $book->is_purchased = in_array($book->id, $purchasedBookIds);
+            $book->has_content = $book->hasContent(); // 🌟 SF-4
+            $book->makeHidden('json_file');
             return $book;
         });
 

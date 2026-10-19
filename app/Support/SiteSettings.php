@@ -109,6 +109,10 @@ final class SiteSettings
         'devices.release_cooldown_days' => 'int',
         'devices.license.days' => 'int',
         'devices.require_binding' => 'bool',
+
+        // 🌟 BKP-1: پشتیبان‌گیری (صفحه‌ی «پشتیبان‌گیری»)
+        'backup.daily' => 'bool',
+        'backup.keep' => 'int',
     ];
 
     /** @var array<string, mixed>|null مقدارهای رمزگشایی‌شده‌ی همین درخواست */

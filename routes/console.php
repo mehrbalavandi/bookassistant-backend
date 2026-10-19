@@ -15,3 +15,18 @@ Artisan::command('orders:expire', function (\App\Services\OrderService $orders) 
 })->purpose('Cancel unpaid orders older than shop.pending_expire_hours');
 
 \Illuminate\Support\Facades\Schedule::command('orders:expire')->hourly();
+
+// 🌟 BKP-1: پشتیبانِ خودکارِ روزانه از داده‌های سایت (پنل ← پشتیبان‌گیری) و پاک‌کردنِ قدیمی‌ها.
+Artisan::command('site:backup {--prune : فقط پشتیبان‌های قدیمی پاک شوند}', function (\App\Services\SiteBackupService $backups) {
+    if (! $this->option('prune')) {
+        $path = $backups->create('auto');
+        $this->info('پشتیبان ساخته شد: '.basename($path));
+    }
+    $n = $backups->prune();
+    if ($n) {
+        $this->info("{$n} پشتیبانِ قدیمی پاک شد.");
+    }
+})->purpose('Back up users, orders, study items, settings … to storage/app/private/backups');
+
+\Illuminate\Support\Facades\Schedule::command('site:backup')->dailyAt('03:30')
+    ->when(fn () => (bool) config('backup.daily', true));

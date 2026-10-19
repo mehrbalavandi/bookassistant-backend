@@ -51,6 +51,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}', [\App\Http\Controllers\WebShopController::class, 'show'])->whereNumber('order')->name('orders.show');
     Route::post('/orders/{order}/receipt', [\App\Http\Controllers\WebShopController::class, 'receipt'])
         ->whereNumber('order')->middleware('throttle:10,1')->name('orders.receipt');
+
+    // 🌟 FB-1: انتقادات و پیشنهادات / گزارشِ ایراد (با تصویر)
+    Route::get('/feedback', [\App\Http\Controllers\FeedbackController::class, 'index'])->name('feedback.index');
+    Route::post('/feedback', [\App\Http\Controllers\FeedbackController::class, 'store'])
+        ->middleware('throttle:10,60')->name('feedback.store');
+    Route::get('/feedback/attachment/{attachment}', [\App\Http\Controllers\FeedbackController::class, 'attachment'])
+        ->whereNumber('attachment')->name('feedback.attachment');
 });
 
 // 🌟 PAY-2: شروعِ پرداخت با لینکِ امضاشده (اپ و سایت) و برگشت از درگاه. نشستِ وب لازم نیست.

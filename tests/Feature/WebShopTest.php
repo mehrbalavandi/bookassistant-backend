@@ -23,7 +23,8 @@ class WebShopTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->book = Book::create(['title' => 'Mindset 01', 'folder_name' => 'mindset-01', 'price' => 200000, 'discount' => 10]);
+        Storage::fake('local');
+        $this->book = $this->bookWithContent(['title' => 'Mindset 01', 'folder_name' => 'mindset-01', 'price' => 200000, 'discount' => 10]);
         $this->user = User::factory()->create();
         config([
             'shop.gateway_enabled' => true,
@@ -60,7 +61,6 @@ class WebShopTest extends TestCase
 
     public function test_card_purchase_and_receipt_on_site_notifies_admins(): void
     {
-        Storage::fake('local');
         Mail::fake();
         config(['shop.notify_email' => 'boss@example.com']);
         $admin = User::factory()->create(['is_admin' => true]);

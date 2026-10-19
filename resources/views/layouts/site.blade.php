@@ -30,6 +30,7 @@
                 @auth
                     <a href="{{ route('home') }}" class="px-3 py-2 rounded-lg hover:bg-slate-100">کتاب‌های من</a>
                     <a href="{{ route('orders.index') }}" class="px-3 py-2 rounded-lg hover:bg-slate-100">سفارش‌ها</a>
+                    <a href="{{ route('feedback.index') }}" class="px-3 py-2 rounded-lg hover:bg-slate-100">انتقادات و پیشنهادات</a>
                     <form action="{{ url('/logout') }}" method="POST">@csrf<button class="px-3 py-2 rounded-lg hover:bg-slate-100">خروج</button></form>
                 @else
                     <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700">ورود / ثبت‌نام</a>
