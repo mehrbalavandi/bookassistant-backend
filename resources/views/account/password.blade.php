@@ -46,7 +46,7 @@
             </div>
             <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">ذخیره‌ی رمز</button>
         </form>
-        <p class="text-xs text-slate-500 mt-4 leading-6">بعد از ذخیره، مرورگر می‌پرسد رمزِ تازه را ذخیره کند یا نه. «مرا به خاطر بسپار» در مرورگرهای دیگر باطل می‌شود.</p>
+        <p class="text-xs text-slate-500 mt-4 leading-6">بعد از ذخیره، مرورگر می‌پرسد رمزِ تازه را ذخیره کند یا نه (رمزِ یک‌حرفی را مرورگرها ذخیره نمی‌کنند). «مرا به خاطر بسپار» در مرورگرهای دیگر باطل می‌شود.</p>
     @endif
 </div>
 @endsection

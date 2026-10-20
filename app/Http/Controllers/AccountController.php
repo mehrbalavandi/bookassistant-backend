@@ -21,6 +21,13 @@ class AccountController extends Controller
     public function editPassword(Request $request)
     {
         $user = $request->user();
+        // 🌟 SITE-15: بعد از ذخیره به صفحه‌ای برگردیم که از آن آمده بود (وگرنه داشبورد)
+        $previous = url()->previous();
+        if ($this->isReturnable($previous, $request)) {
+            $request->session()->put('password.return', $previous);
+        } elseif (! $request->session()->has('errors')) {
+            $request->session()->forget('password.return');
+        }
 
         return view('account.password', [
             'user' => $user,
@@ -60,7 +67,27 @@ class AccountController extends Controller
         // پنلِ ادمین (AuthenticateSession) هَشِ رمز را در نشست نگه می‌دارد؛ بی‌این، ادمین بیرون انداخته می‌شد.
         $request->session()->put('password_hash_web', $user->getAuthPassword());
 
-        return redirect()->route('account.password')
-            ->with('success', $hasPassword ? 'رمزِ عبور عوض شد.' : 'رمزِ عبور ساخته شد؛ از این پس با ایمیل و همین رمز هم وارد می‌شوید.');
+        $message = $hasPassword ? 'رمزِ عبور عوض شد.' : 'رمزِ عبور ساخته شد؛ از این پس با ایمیل و همین رمز هم وارد می‌شوید.';
+        $to = $request->session()->pull('password.return') ?: route('home');
+        if (str_starts_with((string) parse_url($to, PHP_URL_PATH), '/admin')) {
+            // پنل پیامِ سایت را نشان نمی‌دهد؛ اعلانِ فیلامنت در بارگذاریِ بعدی دیده می‌شود
+            \Filament\Notifications\Notification::make()->title($message)->success()->send();
+
+            return redirect()->to($to);
+        }
+
+        return redirect()->to($to)->with('flash', $message);
+    }
+
+    /** صفحه‌ای از همین سایت، که خودِ فرمِ رمز یا صفحه‌ی ورود نیست. */
+    private function isReturnable(?string $url, Request $request): bool
+    {
+        if (! $url || parse_url($url, PHP_URL_HOST) !== $request->getHost()) {
+            return false;
+        }
+        $path = '/'.ltrim((string) parse_url($url, PHP_URL_PATH), '/');
+
+        return ! in_array($path, ['/account/password', '/login', '/register', '/admin/login'], true)
+            && ! str_starts_with($path, '/login/') && ! str_starts_with($path, '/livewire');
     }
 }

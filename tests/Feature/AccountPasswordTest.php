@@ -32,7 +32,7 @@ class AccountPasswordTest extends TestCase
 
         $this->actingAs($u)->post('/account/password', [
             'current_password' => 'oldpass11', 'password' => 'newpass22', 'password_confirmation' => 'newpass22',
-        ])->assertRedirect('/account/password')->assertSessionHas('success');
+        ])->assertRedirect(route('home'))->assertSessionHas('flash');
         $this->assertTrue(Hash::check('newpass22', $u->fresh()->password));
         $this->assertAuthenticatedAs($u);
     }
@@ -55,7 +55,7 @@ class AccountPasswordTest extends TestCase
         $this->actingAs($u)->get('/account/password')->assertOk()->assertSee('ساختنِ رمزِ عبور')
             ->assertDontSee('autocomplete="current-password"', false);
         $this->actingAs($u)->post('/account/password', ['password' => 'newpass22', 'password_confirmation' => 'newpass22'])
-            ->assertSessionHas('success');
+            ->assertSessionHas('flash');
         $this->assertTrue(Hash::check('newpass22', $u->fresh()->password));
     }
 
@@ -102,5 +102,22 @@ class AccountPasswordTest extends TestCase
         $this->post('/login', ['email' => 'admin@example.com', 'password' => 'pass', 'for' => 'admin'])
             ->assertRedirect(url('/admin'));
         $this->assertAuthenticatedAs($admin);
+    }
+
+    /** 🌟 SITE-15 */
+    public function test_after_saving_the_user_returns_to_the_page_they_came_from(): void
+    {
+        $u = User::factory()->create(['email' => 'a@example.com', 'password' => Hash::make('oldpass11')]);
+        $this->actingAs($u)->get('/account/password', ['referer' => url('/orders')])->assertOk();
+        // یک بار اشتباه (فرم دوباره نشان داده می‌شود) — مقصد نباید گم شود
+        $this->actingAs($u)->post('/account/password', [
+            'current_password' => 'wrong', 'password' => 'newpass22', 'password_confirmation' => 'newpass22',
+        ]);
+        $this->actingAs($u)->get('/account/password', ['referer' => url('/account/password')])->assertOk();
+
+        $this->actingAs($u)->post('/account/password', [
+            'current_password' => 'oldpass11', 'password' => 'newpass22', 'password_confirmation' => 'newpass22',
+        ])->assertRedirect(url('/orders'));
+        $this->actingAs($u)->get('/orders')->assertSee('رمزِ عبور عوض شد.');
     }
 }

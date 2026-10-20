@@ -43,6 +43,10 @@
     </header>
 
     <main class="flex-1 w-full max-w-5xl mx-auto px-4 py-8">
+        {{-- 🌟 SITE-15: پیامِ کوتاهِ بعد از یک کار (مثلاً «رمزِ عبور عوض شد») در هر صفحه‌ی سایت --}}
+        @if(session('flash'))
+            <div class="bg-emerald-50 text-emerald-700 p-3 rounded-lg text-sm mb-6 max-w-2xl mx-auto text-center">{{ session('flash') }}</div>
+        @endif
         @yield('content')
     </main>
 
