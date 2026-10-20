@@ -49,7 +49,8 @@ class WebAuthController extends Controller
             return back()->with('tab', 'email')->withErrors(['email' => AuthMethods::disabledMessage(AuthMethods::EMAIL)]);
         }
 
-        Auth::login($user, $request->boolean('remember'));
+        // 🌟 SITE-12: «مرا به خاطر بسپار» فقط اگر در تنظیماتِ سایت روشن باشد
+        Auth::login($user, \App\Support\AuthMethods::remember() && $request->boolean('remember'));
         $request->session()->regenerate();
         $user->forceFill(['last_seen_at' => now()])->save();
 
@@ -95,7 +96,7 @@ class WebAuthController extends Controller
             'is_admin' => false,
         ]);
 
-        Auth::login($user, true);
+        Auth::login($user, \App\Support\AuthMethods::remember());
         $request->session()->regenerate();
 
         return redirect()->route('home')->with('success', 'ثبت‌نام شما با موفقیت انجام شد!');

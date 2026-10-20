@@ -108,7 +108,7 @@ class WebOtpController extends Controller
         $user->forceFill(['last_seen_at' => now(), 'mobile_verified_at' => $user->mobile_verified_at ?? now()])->save();
 
         session()->forget('otp_mobile');
-        Auth::login($user, true);
+        Auth::login($user, AuthMethods::remember()); // 🌟 SITE-12
         $request->session()->regenerate();
 
         // 🌟 SITE-10: نشست در یک صفحه تمام شده بود (redirect()->guest آن را در session('url.intended')

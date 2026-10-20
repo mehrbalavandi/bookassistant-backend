@@ -62,7 +62,9 @@
                     </div>
                     <input type="password" name="password" dir="ltr" autocomplete="current-password" required class="{{ $input }}">
                 </div>
-                <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="remember" value="1" checked> مرا به خاطر بسپار</label>
+                @if(\App\Support\AuthMethods::remember())
+                    <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="remember" value="1" checked> مرا به خاطر بسپار</label>
+                @endif
                 <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">ورود</button>
             </form>
             <p class="text-center text-sm text-slate-500 mt-5">

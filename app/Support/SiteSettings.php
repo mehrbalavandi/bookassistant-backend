@@ -49,6 +49,9 @@ final class SiteSettings
         'site.auth.mobile_disabled_message' => 'string',
         'site.auth.email_disabled_message' => 'string',
         'site.auth.registration_disabled_message' => 'string',
+        // 🌟 SITE-12: مدتِ نشست (دقیقه) و «مرا به خاطر بسپار»
+        'session.lifetime' => 'int',
+        'site.auth.remember' => 'bool',
 
         // اطلاعیه و تعمیر
         'site.announcement.enabled' => 'bool',
@@ -165,6 +168,12 @@ final class SiteSettings
      */
     public static function save(array $input, ?int $userId = null): void
     {
+        // 🌟 SITE-12: خاموش شدنِ «مرا به خاطر بسپار» از همین حالا اثر کند: کوکی‌های ماندگارِ موجود
+        // (remember_token) باطل می‌شوند. نشست‌های باز تا پایانِ مدتشان می‌مانند.
+        if (array_key_exists('site.auth.remember', $input) && ! self::cast('site.auth.remember', $input['site.auth.remember'])
+            && config('site.auth.remember', true)) {
+            \App\Models\User::query()->whereNotNull('remember_token')->update(['remember_token' => null]);
+        }
         foreach ($input as $key => $value) {
             $type = self::FIELDS[$key] ?? null;
             if ($type === null) {

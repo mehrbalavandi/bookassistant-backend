@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
-/** 🌟 SITE-10: بعد از تمام شدنِ نشست ← ورود؛ همان کاربر ← همان صفحه، کاربرِ دیگر ← داشبورد. */
+/** 🌟 SITE-10: بعد از تمام شدنِ نشست ← ورود؛ همان کاربر ← همان صفحه، کاربرِ دیگر ← داشبورد. SITE-11، SITE-12 */
 class SessionResumeTest extends TestCase
 {
     use RefreshDatabase;
@@ -78,6 +78,33 @@ class SessionResumeTest extends TestCase
         $this->get('/admin/users')->assertRedirect('/login');
 
         $this->login('admin@example.com')->assertRedirect(url('/admin/users'));
+    }
+
+    /** 🌟 SITE-12 */
+    public function test_session_lifetime_comes_from_site_settings(): void
+    {
+        \App\Support\SiteSettings::save(['session.lifetime' => 30]);
+        $this->assertSame(30, config('session.lifetime'));
+        $this->user('a@example.com');
+        $cookie = collect($this->login('a@example.com')->headers->getCookies())
+            ->first(fn ($c) => $c->getName() === config('session.cookie'));
+        $this->assertEqualsWithDelta(now()->addMinutes(30)->timestamp, $cookie->getExpiresTime(), 5);
+    }
+
+    /** 🌟 SITE-12 */
+    public function test_remember_me_can_be_turned_off(): void
+    {
+        $a = $this->user('a@example.com');
+        $a->forceFill(['remember_token' => 'old-token'])->save();
+
+        \App\Support\SiteSettings::save(['site.auth.remember' => false]);
+        $this->assertNull($a->fresh()->remember_token, 'existing remember cookies are invalidated');
+        $this->get('/login')->assertDontSee('مرا به خاطر بسپار');
+
+        $response = $this->post('/login', ['email' => 'a@example.com', 'password' => 'pass', 'remember' => '1']);
+        $remember = collect($response->headers->getCookies())
+            ->first(fn ($c) => str_starts_with($c->getName(), 'remember_web_'));
+        $this->assertNull($remember, 'no long-lived login cookie');
     }
 
     public function test_panel_pages_carry_the_field_history_script(): void

@@ -33,6 +33,12 @@ final class AuthMethods
         return (bool) config('site.auth.registration_enabled', true);
     }
 
+    /** 🌟 SITE-12: آیا ورودِ سایت «مرا به خاطر بسپار» دارد (ماندن در حساب بعد از پایانِ نشست)؟ */
+    public static function remember(): bool
+    {
+        return (bool) config('site.auth.remember', true);
+    }
+
     /** ورودِ ایمیلی برای این کاربر مجاز است؟ (ادمین همیشه) */
     public static function emailAllowedFor(?User $user): bool
     {

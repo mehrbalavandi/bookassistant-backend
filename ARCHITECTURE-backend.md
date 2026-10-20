@@ -454,6 +454,10 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
   سه راهِ ورود همین را صدا می‌زنند: `WebAuthController::login`، `WebOtpController::verify` و
   `AdminLoginResponse` (binding برای `LoginResponse`ِ فیلامنت). صفحه‌ی ورود با کوکی + `url.intended`
   پیامِ «نشستِ شما تمام شده است» نشان می‌دهد. تست: `SessionResumeTest`.
+- **SITE-12 (مدتِ نشست):** `session.lifetime` و `site.auth.remember` در `SiteSettings::FIELDS` (بخشِ «نشست»ِ
+  تبِ ورود). `remember` خاموش ← `Auth::login(..., false)` در هر سه راهِ ورودِ سایت و چک‌باکسِ «مرا به خاطر
+  بسپار» پنهان؛ لحظه‌ی خاموش شدن، `remember_token`ِ همه‌ی کاربران null می‌شود تا کوکی‌های ماندگارِ قبلی هم
+  دیگر کار نکنند. بی‌این، پایانِ نشست برای کاربرِ «به خاطر سپرده» دیده نمی‌شد (ورودِ خودکار).
 - **SITE-11 (پیشنهادِ مقدارهای قبلی):** فیلدهای فیلامنت `name` ندارند و با Livewire فرستاده می‌شوند، پس
   مرورگر تاریخچه‌شان را نگه نمی‌داشت. `filament/field-history.blade.php` (render hookِ `panels::body.end`)
   با رویدادِ submit مقدارها را در localStorage (`fieldHistory:v1`، کلید = مسیرِ بخش بی‌شناسه/create/edit +
