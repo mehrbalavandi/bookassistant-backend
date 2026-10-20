@@ -189,6 +189,13 @@ class AdminPanelProvider extends PanelProvider
                 </script>
                 HTML)
             )
+            // 🌟 SITE-13: تغییرِ رمزِ خودِ ادمین (همان صفحه‌ی سایت)
+            ->userMenuItems([
+                'change-password' => \Filament\Navigation\MenuItem::make()
+                    ->label('تغییرِ رمز')
+                    ->icon('heroicon-o-key')
+                    ->url(fn (): string => route('account.password')),
+            ])
             // 🌟 SITE-11: پیشنهادِ مقدارهای قبلی در فیلدها (جز رمز)
             ->renderHook('panels::body.end', fn (): \Illuminate\Contracts\View\View => view('filament.field-history'))
             ->middleware([

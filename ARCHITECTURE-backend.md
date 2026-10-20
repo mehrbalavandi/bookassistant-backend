@@ -458,6 +458,11 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
   تبِ ورود). `remember` خاموش ← `Auth::login(..., false)` در هر سه راهِ ورودِ سایت و چک‌باکسِ «مرا به خاطر
   بسپار» پنهان؛ لحظه‌ی خاموش شدن، `remember_token`ِ همه‌ی کاربران null می‌شود تا کوکی‌های ماندگارِ قبلی هم
   دیگر کار نکنند. بی‌این، پایانِ نشست برای کاربرِ «به خاطر سپرده» دیده نمی‌شد (ورودِ خودکار).
+- **SITE-13 (تغییرِ رمز):** `AccountController` (`/account/password`، auth، throttle:login). رمزِ فعلی اگر
+  کاربر رمز دارد؛ کاربرِ بی‌ایمیل رد. بعد از ذخیره: `remember_token` تازه (مرورگرهای دیگر)، ورودِ دوباره در همین
+  مرورگر (با remember اگر کوکی‌اش بود) و `password_hash_web` در نشست تا `AuthenticateSession`ِ پنل ادمین را
+  بیرون نیندازد. برای مدیرِ رمزِ مرورگر: ایمیل‌ها `autocomplete="username"`، فیلدِ پنهانِ username در فرمِ
+  تغییرِ رمز، و ارسالِ واقعی + redirect. تست: `AccountPasswordTest`.
 - **SITE-11 (پیشنهادِ مقدارهای قبلی):** فیلدهای فیلامنت `name` ندارند و با Livewire فرستاده می‌شوند، پس
   مرورگر تاریخچه‌شان را نگه نمی‌داشت. `filament/field-history.blade.php` (render hookِ `panels::body.end`)
   با رویدادِ submit مقدارها را در localStorage (`fieldHistory:v1`، کلید = مسیرِ بخش بی‌شناسه/create/edit +

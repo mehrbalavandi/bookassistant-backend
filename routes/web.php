@@ -52,6 +52,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{order}/receipt', [\App\Http\Controllers\WebShopController::class, 'receipt'])
         ->whereNumber('order')->middleware('throttle:10,1')->name('orders.receipt');
 
+    // 🌟 SITE-13: تغییرِ رمزِ عبور
+    Route::get('/account/password', [\App\Http\Controllers\AccountController::class, 'editPassword'])->name('account.password');
+    Route::post('/account/password', [\App\Http\Controllers\AccountController::class, 'updatePassword'])
+        ->middleware('throttle:login')->name('account.password.update');
+
     // 🌟 FB-1: انتقادات و پیشنهادات / گزارشِ ایراد (با تصویر)
     Route::get('/feedback', [\App\Http\Controllers\FeedbackController::class, 'index'])->name('feedback.index');
     Route::post('/feedback', [\App\Http\Controllers\FeedbackController::class, 'store'])

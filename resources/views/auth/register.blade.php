@@ -37,7 +37,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">ایمیل</label>
-                <input type="email" name="email" value="{{ old('email') }}" dir="ltr" autocomplete="email" required class="{{ $input }}">
+                <input type="email" name="email" value="{{ old('email') }}" dir="ltr" autocomplete="username" required class="{{ $input }}">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">رمز عبور</label>
