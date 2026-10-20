@@ -50,6 +50,11 @@
         <div>
             <a href="{{ route('app.page') }}" class="btn btn-success" style="width: auto;">📱 دریافتِ اپ</a>
             <a href="{{ route('orders.index') }}" class="btn" style="width: auto; background:#e0e7ff; color:#3730a3;">🧾 سفارش‌های من</a>
+            {{-- 🌟 SITE-13 / FB-1: در داشبورد هم (این صفحه سربرگِ سایت را ندارد) --}}
+            <a href="{{ route('feedback.index') }}" class="btn" style="width: auto; background:#f1f5f9; color:#334155;">💬 انتقادات و پیشنهادات</a>
+            @if(filled(Auth::user()->email))
+                <a href="{{ route('account.password') }}" class="btn" style="width: auto; background:#fef3c7; color:#92400e;">🔑 تغییرِ رمز</a>
+            @endif
             <form action="{{ url('/logout') }}" method="POST" style="display: inline;">
                 @csrf
                 <button type="submit" class="btn btn-danger">خروج از حساب</button>

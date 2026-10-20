@@ -22,6 +22,7 @@ class AdminAuthenticate extends FilamentAuthenticate
     {
         // 🌟 SITE-2: وقتی ورودِ ایمیلی در پنل خاموش است، صفحه‌ی ورودِ سایت فرمِ ایمیل ندارد؛
         // پس ادمین به صفحه‌ی ورودِ خودِ پنل (‎/admin/login‎) می‌رود که همیشه کار می‌کند.
-        return \App\Support\AuthMethods::email() ? route('login') : route('filament.admin.auth.login');
+        // 🌟 SITE-14: حتی آن موقع هم صفحه‌ی ورودِ سایت (‎?for=admin‎)، نه فرمِ Livewireِ پنل.
+        return \App\Support\AuthMethods::adminLoginUrl();
     }
 }

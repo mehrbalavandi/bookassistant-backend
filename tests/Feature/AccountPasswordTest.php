@@ -77,4 +77,30 @@ class AccountPasswordTest extends TestCase
         $this->get('/login')->assertSee('autocomplete="username"', false)->assertSee('autocomplete="current-password"', false);
         $this->get('/register')->assertSee('autocomplete="username"', false)->assertSee('autocomplete="new-password"', false);
     }
+
+    public function test_dashboard_links_to_change_password_for_email_users(): void
+    {
+        $u = User::factory()->create(['email' => 'a@example.com', 'is_admin' => false]);
+        $this->actingAs($u)->get('/')->assertOk()->assertSee(route('account.password'), false);
+        $m = User::factory()->create(['email' => null, 'mobile' => '09120000002', 'is_admin' => false]);
+        $this->actingAs($m)->get('/')->assertOk()->assertDontSee(route('account.password'), false);
+    }
+
+    /** 🌟 SITE-14 */
+    public function test_panel_login_page_sends_to_the_site_login_form(): void
+    {
+        $this->get('/admin/login')->assertRedirect(route('login', ['tab' => 'email']));
+        $this->get('/admin')->assertRedirect(route('login', ['tab' => 'email']));
+
+        config(['site.auth.email_enabled' => false]);
+        $this->get('/admin/login')->assertRedirect(route('login', ['for' => 'admin']));
+        $this->get('/login?for=admin')->assertOk()->assertSee('ورودِ مدیران')
+            ->assertSee('autocomplete="current-password"', false)->assertSee('name="for" value="admin"', false);
+
+        $admin = User::factory()->create(['email' => 'admin@example.com', 'password' => Hash::make('pass'), 'is_admin' => true]);
+        // ‎/admin‎ پیش‌تر خواسته شده بود ← بعد از ورود همان‌جا
+        $this->post('/login', ['email' => 'admin@example.com', 'password' => 'pass', 'for' => 'admin'])
+            ->assertRedirect(url('/admin'));
+        $this->assertAuthenticatedAs($admin);
+    }
 }

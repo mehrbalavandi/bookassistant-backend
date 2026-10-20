@@ -463,6 +463,9 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
   مرورگر (با remember اگر کوکی‌اش بود) و `password_hash_web` در نشست تا `AuthenticateSession`ِ پنل ادمین را
   بیرون نیندازد. برای مدیرِ رمزِ مرورگر: ایمیل‌ها `autocomplete="username"`، فیلدِ پنهانِ username در فرمِ
   تغییرِ رمز، و ارسالِ واقعی + redirect. تست: `AccountPasswordTest`.
+- **SITE-14 (ورودِ پنل = فرمِ سایت):** `App\Filament\Pages\Auth\Login::mount` به `AuthMethods::adminLoginUrl()`
+  می‌فرستد (‎/login?tab=email‎، یا ‎/login?for=admin‎ وقتی ورودِ ایمیلی خاموش است)؛ دو میدل‌ویرِ پنل هم. دلیل:
+  فرمِ Livewire را مدیرِ رمزِ مرورگر «ارسالِ موفق» نمی‌شناسد (ذخیره/به‌روزرسانیِ رمز نمی‌آمد).
 - **SITE-11 (پیشنهادِ مقدارهای قبلی):** فیلدهای فیلامنت `name` ندارند و با Livewire فرستاده می‌شوند، پس
   مرورگر تاریخچه‌شان را نگه نمی‌داشت. `filament/field-history.blade.php` (render hookِ `panels::body.end`)
   با رویدادِ submit مقدارها را در localStorage (`fieldHistory:v1`، کلید = مسیرِ بخش بی‌شناسه/create/edit +

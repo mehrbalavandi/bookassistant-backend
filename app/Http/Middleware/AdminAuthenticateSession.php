@@ -16,6 +16,6 @@ class AdminAuthenticateSession extends FilamentAuthenticateSession
 {
     protected function redirectTo($request): ?string
     {
-        return route('login');
+        return \App\Support\AuthMethods::adminLoginUrl(); // 🌟 SITE-14
     }
 }

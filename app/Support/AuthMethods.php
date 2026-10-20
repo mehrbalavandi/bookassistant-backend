@@ -39,6 +39,15 @@ final class AuthMethods
         return (bool) config('site.auth.remember', true);
     }
 
+    /**
+     * 🌟 SITE-14: صفحه‌ی ورودِ ادمین = صفحه‌ی ورودِ سایت (فرمِ HTMLِ معمولی که مدیرِ رمزِ مرورگر می‌شناسد).
+     * وقتی ورودِ ایمیلی برای کاربران خاموش است، ‎?for=admin‎ فرمِ ایمیل را فقط برای ادمین‌ها نشان می‌دهد.
+     */
+    public static function adminLoginUrl(): string
+    {
+        return self::email() ? route('login', ['tab' => 'email']) : route('login', ['for' => 'admin']);
+    }
+
     /** ورودِ ایمیلی برای این کاربر مجاز است؟ (ادمین همیشه) */
     public static function emailAllowedFor(?User $user): bool
     {

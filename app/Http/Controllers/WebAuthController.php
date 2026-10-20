@@ -26,6 +26,8 @@ class WebAuthController extends Controller
         return view('auth.login', [
             'methods' => AuthMethods::toArray(),
             'tab' => $request->query('tab') === 'email' || session('tab') === 'email' ? 'email' : 'mobile',
+            // 🌟 SITE-14: ورودِ ادمین وقتی ورودِ ایمیلی برای کاربران خاموش است
+            'adminOnly' => ! AuthMethods::email() && ($request->query('for') === 'admin' || session('for') === 'admin'),
             // 🌟 SITE-10: نشست بی‌خروج تمام شده و کاربر از یک صفحه‌ی محافظت‌شده به این‌جا آمده
             'sessionEnded' => \App\Support\LoginRedirect::sessionEnded($request),
         ]);
@@ -41,7 +43,7 @@ class WebAuthController extends Controller
         $user = User::where('email', $email)->first() ?? User::where('email', $credentials['email'])->first();
 
         if (! $user || ! $user->password || ! Hash::check($credentials['password'], $user->password)) {
-            return back()->with('tab', 'email')->withInput($request->only('email'))->withErrors([
+            return back()->with('tab', 'email')->with('for', $request->input('for'))->withInput($request->only('email'))->withErrors([
                 'email' => AuthMethods::email() ? 'ایمیل یا رمز عبور اشتباه است.' : AuthMethods::disabledMessage(AuthMethods::EMAIL),
             ]);
         }

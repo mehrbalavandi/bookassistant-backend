@@ -75,7 +75,7 @@ class SessionResumeTest extends TestCase
     {
         $admin = $this->user('admin@example.com', true);
         $this->withCookie(LoginRedirect::COOKIE, (string) $admin->id);
-        $this->get('/admin/users')->assertRedirect('/login');
+        $this->get('/admin/users')->assertRedirect(route('login', ['tab' => 'email']));
 
         $this->login('admin@example.com')->assertRedirect(url('/admin/users'));
     }

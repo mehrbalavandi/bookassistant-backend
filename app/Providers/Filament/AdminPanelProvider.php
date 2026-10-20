@@ -28,7 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(\App\Filament\Pages\Auth\Login::class) // 🌟 SITE-14: ← صفحه‌ی ورودِ سایت
             // 🌟 نام و نشانِ خودِ پروژه به‌جای Laravel/Filament (همان آیکونِ اپ).
             // 🌟 SITE-1: نامِ سایت از «تنظیماتِ سایت»
             ->brandName(fn () => (string) config('site.name'))
