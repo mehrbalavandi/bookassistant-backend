@@ -7,12 +7,14 @@ use App\Services\Sms\KavenegarSmsSender;
 use App\Services\Sms\LogSmsSender;
 use App\Services\Sms\SmsIrSmsSender;
 use App\Services\Sms\SmsSender;
+use App\Support\LoginRedirect;
 use App\Support\Mobile;
 use App\Support\SiteSettings;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
@@ -38,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
                 default => new LogSmsSender,
             };
         });
+
+        // 🌟 SITE-10: بعد از ورود از صفحه‌ی خودِ پنل هم «همان کاربر ← همان صفحه».
+        $this->app->bind(\Filament\Http\Responses\Auth\Contracts\LoginResponse::class,
+            \App\Http\Responses\AdminLoginResponse::class);
     }
 
     /**
@@ -48,6 +54,10 @@ class AppServiceProvider extends ServiceProvider
         // 🌟 SITE-1: مقدارهایی که ادمین در «تنظیماتِ سایت» عوض کرده روی config نوشته می‌شوند
         // (پیش از هر چیز، تا پیامک، پرداخت، دستگاه و ورود همه از همان پیروی کنند).
         SiteSettings::apply();
+
+        // 🌟 SITE-10: کوکیِ «کاربرِ قبلی» با هر ورود نوشته و با خروجِ عمدی پاک می‌شود.
+        Event::listen(\Illuminate\Auth\Events\Login::class, [LoginRedirect::class, 'onLogin']);
+        Event::listen(\Illuminate\Auth\Events\Logout::class, [LoginRedirect::class, 'onLogout']);
 
         // 🌟 AUTH-2: سقفِ درخواستِ کد — هم به‌ازای IP و هم به‌ازای شماره (جلوی هزینه‌تراشی
         // با پیامک و حدس‌زدنِ کد را می‌گیرد). تأییدِ کد هم سقفِ جدا دارد.

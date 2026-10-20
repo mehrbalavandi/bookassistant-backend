@@ -447,6 +447,19 @@ Delete، حذف از ردیفِ جدول، حذفِ گروهی) پوشش داد�
   اعلان‌ها) مودال نمی‌شود؛ صفحه یک‌بار از نو بار می‌شود (render hookِ `panels::body.end`).
 - **ویرایشِ کاربر:** فیلدِ «رمزِ تازه» `autocomplete="new-password"` و ایمیل `off` دارند، تا مرورگر رمز
   و ایمیلِ ذخیره‌شده‌ی خودِ ادمین را در فرمِ کاربرِ دیگر پر نکند. رمزِ فعلی قابلِ نمایش نیست (فقط هَش).
+- **SITE-10 (ادامه‌ی نشست):** `App\Support\LoginRedirect`. کوکیِ رمزشده‌ی `last_login` (شناسه‌ی کاربر)
+  با رویدادِ `Login`ِ گاردِ web نوشته و با `Logout` پاک می‌شود؛ پس بودنش هنگامِ ورود یعنی نشستِ قبلی
+  بی‌خروج تمام شده. پیش از `redirect()->intended()`، اگر کوکی مالِ کاربرِ دیگری است یا مقصد `/admin`
+  است و کاربر ادمین نیست، `url.intended` کنار می‌رود (← `route('home')`، که ادمین را به `/admin` می‌برد).
+  سه راهِ ورود همین را صدا می‌زنند: `WebAuthController::login`، `WebOtpController::verify` و
+  `AdminLoginResponse` (binding برای `LoginResponse`ِ فیلامنت). صفحه‌ی ورود با کوکی + `url.intended`
+  پیامِ «نشستِ شما تمام شده است» نشان می‌دهد. تست: `SessionResumeTest`.
+- **SITE-11 (پیشنهادِ مقدارهای قبلی):** فیلدهای فیلامنت `name` ندارند و با Livewire فرستاده می‌شوند، پس
+  مرورگر تاریخچه‌شان را نگه نمی‌داشت. `filament/field-history.blade.php` (render hookِ `panels::body.end`)
+  با رویدادِ submit مقدارها را در localStorage (`fieldHistory:v1`، کلید = مسیرِ بخش بی‌شناسه/create/edit +
+  id فیلد، ۱۲ مقدار) نگه می‌دارد و با focusin یک `<datalist>` می‌سازد. رمزها (حتی revealable)،
+  autocompleteهای new-password/current-password/one-time-code، فایل/چک‌باکس/تاریخ و جست‌وجوی Select کنار
+  گذاشته می‌شوند؛ برای کنار گذاشتنِ بخشی دیگر: `data-no-field-history`.
 - **صفحه‌ی ویرایشِ کتاب:** بعد از آپلود/حذفِ محتوا صفحه از نو بار می‌شود، تا شماره‌ی نسخه‌ها و فهرستِ
   فایل‌ها تازه باشند و «ذخیره»ی بعدی مقدارِ کهنه را رویشان ننویسد.
 

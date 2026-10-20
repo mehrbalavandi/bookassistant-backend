@@ -26,6 +26,8 @@ class WebAuthController extends Controller
         return view('auth.login', [
             'methods' => AuthMethods::toArray(),
             'tab' => $request->query('tab') === 'email' || session('tab') === 'email' ? 'email' : 'mobile',
+            // 🌟 SITE-10: نشست بی‌خروج تمام شده و کاربر از یک صفحه‌ی محافظت‌شده به این‌جا آمده
+            'sessionEnded' => \App\Support\LoginRedirect::sessionEnded($request),
         ]);
     }
 
@@ -51,9 +53,9 @@ class WebAuthController extends Controller
         $request->session()->regenerate();
         $user->forceFill(['last_seen_at' => now()])->save();
 
-        // 🌟 اگر جلسه در یک صفحه‌ی خاص منقضی شده بود، بعد از ورودِ مجدد به همان صفحه برگردیم
-        // (redirect()->guest آدرس را در session('url.intended') گذاشته).
-        return redirect()->intended(route('home'));
+        // 🌟 SITE-10: نشست در یک صفحه تمام شده بود (redirect()->guest آن را در session('url.intended')
+        // گذاشته): همان کاربر ← همان صفحه؛ کاربرِ دیگر ← داشبورد.
+        return \App\Support\LoginRedirect::to($request, $user);
     }
 
     public function showRegister()

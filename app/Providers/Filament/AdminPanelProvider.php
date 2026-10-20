@@ -189,6 +189,8 @@ class AdminPanelProvider extends PanelProvider
                 </script>
                 HTML)
             )
+            // 🌟 SITE-11: پیشنهادِ مقدارهای قبلی در فیلدها (جز رمز)
+            ->renderHook('panels::body.end', fn (): \Illuminate\Contracts\View\View => view('filament.field-history'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

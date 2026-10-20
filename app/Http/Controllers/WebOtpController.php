@@ -111,6 +111,8 @@ class WebOtpController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('home'));
+        // 🌟 SITE-10: نشست در یک صفحه تمام شده بود (redirect()->guest آن را در session('url.intended')
+        // گذاشته): همان کاربر ← همان صفحه؛ کاربرِ دیگر ← داشبورد.
+        return \App\Support\LoginRedirect::to($request, $user);
     }
 }

@@ -73,16 +73,16 @@
                     @csrf
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">کدِ پیگیری / شماره‌ی مرجع</label>
-                        <input type="text" name="tracking_code" value="{{ old('tracking_code', $order->card_tracking_code) }}" dir="ltr" required class="{{ $input }}">
+                        <input type="text" name="tracking_code" value="{{ old('tracking_code', $order->card_tracking_code) }}" dir="ltr" autocomplete="off" required class="{{ $input }}">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">۴ رقمِ آخرِ کارتِ شما</label>
-                            <input type="text" name="card_last4" value="{{ old('card_last4', $order->card_last4) }}" dir="ltr" inputmode="numeric" maxlength="4" class="{{ $input }}">
+                            <input type="text" name="card_last4" value="{{ old('card_last4', $order->card_last4) }}" dir="ltr" autocomplete="on" inputmode="numeric" maxlength="4" class="{{ $input }}">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">زمانِ واریز</label>
-                            <input type="text" name="paid_at" value="{{ old('paid_at', $order->card_paid_at) }}" placeholder="۱۴۰۵/۰۷/۲۵ ۱۰:۳۰" class="{{ $input }}">
+                            <input type="text" name="paid_at" value="{{ old('paid_at', $order->card_paid_at) }}" autocomplete="off" placeholder="۱۴۰۵/۰۷/۲۵ ۱۰:۳۰" class="{{ $input }}">
                         </div>
                     </div>
                     <div>

@@ -11,6 +11,10 @@
 <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100 w-full max-w-md mx-auto">
     <h1 class="text-2xl font-bold text-center text-slate-900 mb-6">ورود یا ثبت‌نام</h1>
 
+    @if(! empty($sessionEnded) && ! $errors->any())
+        {{-- 🌟 SITE-10 --}}
+        <div class="bg-amber-50 text-amber-800 p-3 rounded-lg text-sm mb-4 leading-7">نشستِ شما تمام شده است. دوباره وارد شوید تا از همان صفحه‌ای که بودید ادامه دهید.</div>
+    @endif
     @if($errors->any())
         <div class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{{ $errors->first() }}</div>
     @endif

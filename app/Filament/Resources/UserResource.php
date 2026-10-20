@@ -75,6 +75,7 @@ class UserResource extends Resource
                         ->label('ایمیل')
                         ->email()
                         // مرورگر ایمیلِ خودِ ادمین را (همراهِ رمزش) در فرمِ کاربرِ دیگر پر نکند.
+                        // ایمیل‌هایی که قبلاً در همین فیلد ثبت شده‌اند را SITE-11 (field-history) پیشنهاد می‌دهد.
                         ->autocomplete('off')
                         ->extraInputAttributes(['dir' => 'ltr'])
                         ->dehydrateStateUsing(fn ($state) => filled($state) ? $state : null)
