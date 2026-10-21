@@ -93,12 +93,19 @@ class AuthController extends Controller
     // ۳. متد خروج (Logout) و باطل کردن توکن
     public function logout(Request $request)
     {
-        // حذف توکنی که کاربر با آن به API متصل شده است
-        $request->user()->currentAccessToken()->delete();
+        // 🌟 SYNC-1: مجوزِ تازه درست پیش از خروج — مهلتِ بعد از خروجِ اپ (DEV-7) از همین لحظه و با
+        // تنظیماتِ فعلیِ پنل حساب می‌شود (اعتبارِ مجوزِ آفلاین و فاصله‌ی جدا کردنِ دستگاه).
+        $user = $request->user();
+        $device = $this->devices->current($request);
+        $license = $device ? app(\App\Services\LicenseService::class)->issue($user, $device) : null;
 
-        return response()->json([
+        // حذف توکنی که کاربر با آن به API متصل شده است
+        $user->currentAccessToken()->delete();
+
+        return response()->json(array_filter([
             'success' => true,
-            'message' => 'خروج با موفقیت انجام شد و توکن باطل گردید.'
-        ], 200);
+            'message' => 'خروج با موفقیت انجام شد و توکن باطل گردید.',
+            'license' => $license,
+        ], fn ($v) => $v !== null), 200);
     }
 }

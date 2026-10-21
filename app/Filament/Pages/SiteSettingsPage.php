@@ -219,8 +219,8 @@ class SiteSettingsPage extends Page implements HasForms
         return Tabs\Tab::make('دستگاه‌ها')->icon('heroicon-o-device-phone-mobile')->schema([
             Section::make()->columns(2)->schema([
                 $this->int('devices.max_per_user', 'سقفِ دستگاهِ هر حساب', 1, 10)->helperText('برای یک کاربرِ خاص در صفحه‌ی همان کاربر عوض می‌شود.'),
-                $this->int('devices.release_cooldown_days', 'فاصله‌ی جدا کردنِ دستگاه توسطِ کاربر (روز)', 0, 365)->helperText('0 = بی‌محدودیت. ادمین همیشه می‌تواند.'),
-                $this->int('devices.license.days', 'اعتبارِ مجوزِ آفلاین (روز)', 1, 365),
+                $this->int('devices.release_cooldown_days', 'فاصله‌ی جدا کردنِ دستگاه توسطِ کاربر (روز)', 0, 365)->helperText('0 = بی‌محدودیت. ادمین همیشه می‌تواند. سقفِ مهلتِ بعد از «خروج از حساب» در اپ هم هست (0 = بعد از خروج قفل).'),
+                $this->int('devices.license.days', 'اعتبارِ مجوزِ آفلاین (روز)', 1, 365)->helperText('اپ با هر اتصال تمدیدش می‌کند. بعد از «خروج از حساب»، کتاب‌های دانلودشده حداکثر تا کمترینِ این عدد و «فاصله‌ی جدا کردنِ دستگاه» باز می‌مانند؛ اپ همین را در پنجره‌ی تأییدِ خروج می‌گوید.'),
                 $this->toggle('devices.require_binding', 'اجبارِ شناسه‌ی دستگاه', 'خاموش فقط برای دوره‌ی کوتاهِ انتشارِ نسخه‌ی تازه‌ی اپ.'),
             ]),
         ]);

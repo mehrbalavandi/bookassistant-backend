@@ -155,6 +155,8 @@ class DeviceController extends Controller
         return response()->json([
             'success' => true,
             'license' => $this->licenses->issue($user, $device),
+            // 🌟 SYNC-1: نام/موبایل/ایمیلی که در سایت عوض شده، با همین تماسِ همیشگیِ اپ به اپ می‌رسد.
+            'user' => $user->toAppArray(),
         ]);
     }
 
@@ -169,6 +171,7 @@ class DeviceController extends Controller
         return response()->json([
             'success' => true,
             'license' => $this->licenses->issue($request->user(), $device),
+            'user' => $request->user()->toAppArray(), // 🌟 SYNC-1
         ]);
     }
 

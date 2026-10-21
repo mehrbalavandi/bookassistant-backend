@@ -231,6 +231,26 @@ class DeviceBindingTest extends TestCase
         $this->assertNull($this->api($token, 'h1-device-aaaa')->getJson('/api/license')->assertOk()->json('license'));
     }
 
+    /** 🌟 SYNC-1: تنظیماتِ پنل با اولین اتصال به اپ می‌رسد؛ خروج مجوزِ آخر را از همان لحظه می‌دهد. */
+    public function test_panel_changes_reach_the_app_and_logout_issues_a_final_license(): void
+    {
+        $token = $this->login('h1-device-aaaa')->assertOk()->json('token');
+        config(['devices.license.days' => 7, 'devices.release_cooldown_days' => 20]);
+        $this->user->forceFill(['first_name' => 'C', 'name' => 'C B'])->save();
+
+        $res = $this->api($token, 'h1-device-aaaa')->getJson('/api/license')->assertOk()
+            ->assertJsonPath('user.first_name', 'C');
+        $payload = app(LicenseService::class)->verify($res->json('license'));
+        $this->assertEqualsWithDelta(time() + 7 * 86400, $payload['exp'], 5);
+        $this->assertSame(20, $payload['gd']);
+        $this->api($token, 'h1-device-aaaa')->postJson('/api/devices', [])->assertOk()
+            ->assertJsonPath('user.first_name', 'C');
+
+        $out = $this->api($token, 'h1-device-aaaa')->postJson('/api/logout')->assertOk();
+        $this->assertNotNull(app(LicenseService::class)->verify($out->json('license')));
+        $this->assertSame(0, PersonalAccessToken::count(), 'توکن باطل شد');
+    }
+
     public function test_keygen_prints_a_working_key_pair(): void
     {
         config(['devices.license.signing_key' => null]);
