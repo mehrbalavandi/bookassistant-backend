@@ -35,6 +35,7 @@ class WebAuthController extends Controller
 
     public function login(Request $request)
     {
+        \App\Support\LoginRedirect::restoreIntended($request); // 🌟 SITE-16
         $credentials = $request->validate([
             'email' => 'required|string|email',
             'password' => 'required|string',

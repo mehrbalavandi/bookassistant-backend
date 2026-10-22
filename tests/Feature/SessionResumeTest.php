@@ -41,6 +41,35 @@ class SessionResumeTest extends TestCase
         $this->login('a@example.com')->assertRedirect('/orders');
     }
 
+    /** 🌟 SITE-16: نشستِ مهمانِ صفحه‌ی ورود هم تمام شد ← «همان صفحه» از فیلدِ پنهانِ فرم. */
+    public function test_intended_page_survives_a_lost_guest_session(): void
+    {
+        $a = $this->user('a@example.com');
+        $this->withCookie(LoginRedirect::COOKIE, (string) $a->id);
+        $this->get('/orders')->assertRedirect('/login');
+        $this->get('/login')->assertOk()->assertSee('name="intended" value="/orders"', false);
+
+        // نشست از دست رفت (url.intended هم)؛ فرم مسیر را با خودش دارد.
+        $this->flushSession();
+        $this->post('/login', ['email' => 'a@example.com', 'password' => 'pass', 'intended' => '/orders'])
+            ->assertRedirect('/orders');
+    }
+
+    public function test_intended_field_only_accepts_local_paths(): void
+    {
+        $this->user('a@example.com');
+        $this->post('/login', ['email' => 'a@example.com', 'password' => 'pass', 'intended' => '//evil.example/x'])
+            ->assertRedirect(route('home'));
+    }
+
+    public function test_csrf_token_endpoint_returns_a_fresh_token_uncached(): void
+    {
+        $res = $this->get('/csrf-token')->assertOk();
+        $this->assertNotEmpty($res->json('token'));
+        $this->assertStringContainsString('no-store', (string) $res->headers->get('Cache-Control'));
+        $this->get('/login')->assertSee('csrf-refresh', false)->assertSee('csrf-token', false);
+    }
+
     public function test_another_user_goes_to_the_dashboard_instead(): void
     {
         $a = $this->user('a@example.com');

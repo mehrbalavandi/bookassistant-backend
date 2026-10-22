@@ -21,6 +21,7 @@
         @if(! $mobile)
             <form action="{{ route('login.otp.request') }}" method="POST" class="space-y-4">
                 @csrf
+                @if($__intended = \App\Support\LoginRedirect::intendedPath(request()))<input type="hidden" name="intended" value="{{ $__intended }}">@endif
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">شماره‌ی موبایل</label>
                     <input type="tel" name="mobile" value="{{ old('mobile') }}" placeholder="09121234567" dir="ltr" inputmode="numeric" autocomplete="tel" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none text-left">
@@ -30,6 +31,7 @@
         @else
             <form action="{{ route('login.otp.verify') }}" method="POST" class="space-y-4">
                 @csrf
+                @if($__intended = \App\Support\LoginRedirect::intendedPath(request()))<input type="hidden" name="intended" value="{{ $__intended }}">@endif
                 <p class="text-sm text-slate-600">کد به <strong dir="ltr">{{ $mobile }}</strong> پیامک شد.</p>
                 @if($debugCode)
                     <p class="text-xs text-amber-700 bg-amber-50 rounded p-2">حالتِ توسعه — کد: <strong dir="ltr">{{ $debugCode }}</strong></p>
@@ -54,6 +56,7 @@
             </form>
             <form action="{{ route('login.otp.request') }}" method="POST" class="mt-3 text-center">
                 @csrf
+                @if($__intended = \App\Support\LoginRedirect::intendedPath(request()))<input type="hidden" name="intended" value="{{ $__intended }}">@endif
                 <input type="hidden" name="mobile" value="{{ $mobile }}">
                 <button type="submit" class="text-sm text-blue-600">ارسالِ دوباره‌ی کد</button>
             </form>

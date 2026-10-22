@@ -37,6 +37,7 @@ class WebOtpController extends Controller
 
     public function request(Request $request)
     {
+        \App\Support\LoginRedirect::restoreIntended($request); // 🌟 SITE-16
         if (! AuthMethods::mobile()) {
             return redirect()->route('login')->withErrors(['mobile' => AuthMethods::disabledMessage(AuthMethods::MOBILE)]);
         }
@@ -68,6 +69,7 @@ class WebOtpController extends Controller
 
     public function verify(Request $request)
     {
+        \App\Support\LoginRedirect::restoreIntended($request); // 🌟 SITE-16
         if (! AuthMethods::mobile()) {
             return redirect()->route('login')->withErrors(['mobile' => AuthMethods::disabledMessage(AuthMethods::MOBILE)]);
         }

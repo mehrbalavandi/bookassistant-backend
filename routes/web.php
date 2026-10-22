@@ -23,6 +23,9 @@ Route::get('/register', [WebAuthController::class, 'showRegister'])->name('regis
 Route::post('/register', [WebAuthController::class, 'register'])->middleware('throttle:login')->name('register.store');
 
 // مسیرهای مربوط به ورود
+// 🌟 SITE-16: توکنِ CSRFِ تازه برای فرمی که مدتی باز مانده (layouts.site پیش از فرستادن می‌گیرد).
+Route::get('/csrf-token', fn () => response()->json(['token' => csrf_token()])
+    ->header('Cache-Control', 'no-store'))->name('csrf.token')->middleware('throttle:60,1');
 Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [WebAuthController::class, 'login'])->middleware('throttle:login');
 

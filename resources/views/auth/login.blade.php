@@ -38,6 +38,7 @@
             <p class="text-sm text-slate-500 mb-4 leading-7">کدِ ورود برایتان پیامک می‌شود. اگر حساب ندارید، همین‌جا ساخته می‌شود؛ همان حسابی که در برنامه دارید.</p>
             <form action="{{ route('login.otp.request') }}" method="POST" class="space-y-4">
                 @csrf
+                @if($__intended = \App\Support\LoginRedirect::intendedPath(request()))<input type="hidden" name="intended" value="{{ $__intended }}">@endif
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">شماره‌ی موبایل</label>
                     <input type="tel" name="mobile" value="{{ old('mobile') }}" placeholder="09121234567" dir="ltr" inputmode="numeric" autocomplete="tel" required class="{{ $input }} text-left">
@@ -56,6 +57,7 @@
         @if($methods['email'])
             <form action="{{ route('login') }}" method="POST" class="space-y-4">
                 @csrf
+                @if($__intended = \App\Support\LoginRedirect::intendedPath(request()))<input type="hidden" name="intended" value="{{ $__intended }}">@endif
                 @if($adminOnly)<input type="hidden" name="for" value="admin">@endif
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">ایمیل</label>

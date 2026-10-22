@@ -42,6 +42,36 @@ class LoginRedirect
         return $request->session()->has('url.intended') && self::previousUserId($request) !== null;
     }
 
+    /**
+     * 🌟 SITE-16: نشانیِ نسبیِ url.intended (مسیر + کوئری) برای فیلدِ پنهانِ فرم‌های ورود — اگر نشستِ
+     * مهمان پیش از فرستادن تمام شود، «همان صفحه» از دست نمی‌رود.
+     */
+    public static function intendedPath(Request $request): ?string
+    {
+        $intended = $request->session()->get('url.intended');
+        if (! is_string($intended) || $intended === '') {
+            return null;
+        }
+        $path = (string) (parse_url($intended, PHP_URL_PATH) ?: '/');
+        $query = parse_url($intended, PHP_URL_QUERY);
+
+        return $path.($query ? '?'.$query : '');
+    }
+
+    /** 🌟 SITE-16: url.intended از فیلدِ پنهانِ فرم، اگر نشست آن را ندارد (فقط مسیرِ همین سایت). */
+    public static function restoreIntended(Request $request): void
+    {
+        if ($request->session()->has('url.intended')) {
+            return;
+        }
+        $path = $request->input('intended');
+        if (! is_string($path) || ! str_starts_with($path, '/') || str_starts_with($path, '//')
+            || str_contains($path, '\\') || strlen($path) > 2000) {
+            return;
+        }
+        $request->session()->put('url.intended', url($path));
+    }
+
     /** مقصدِ بعد از ورودِ موفق. پیش از redirect()->intended(...) صدا زده می‌شود. */
     public static function prepare(Request $request, User $user): void
     {

@@ -51,5 +51,39 @@
     </main>
 
     @include('partials.footer')
+    {{-- 🌟 SITE-16: هر فرمِ POST درست پیش از فرستادن توکنِ CSRFِ تازه می‌گیرد (یک درخواستِ کوچکِ
+         /csrf-token)؛ وگرنه اگر نشست — مثلاً نشستِ مهمانِ همین صفحه‌ی ورود — تا آن لحظه تمام شده بود،
+         فرستادن با «مهلتِ صفحه تمام شده بود» برمی‌گشت و یک‌بار دیگر باید می‌فرستادید. اگر آن درخواست
+         نشد (بی‌اینترنت)، فرم همان‌طور فرستاده می‌شود. --}}
+    <script data-site="csrf-refresh">
+    (function () {
+        var url = @json(route('csrf.token'));
+        document.addEventListener('submit', function (e) {
+            var f = e.target;
+            if (!(f instanceof HTMLFormElement) || f.dataset.csrfFresh === '1') return;
+            if ((f.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+            if (!f.querySelector('input[name="_token"]')) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            var submitter = e.submitter || null;
+            var done = function () {
+                f.dataset.csrfFresh = '1';
+                if (f.requestSubmit) { f.requestSubmit(submitter && submitter.form === f ? submitter : undefined); } else { f.submit(); }
+                setTimeout(function () { delete f.dataset.csrfFresh; }, 0);
+            };
+            fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (d && d.token) {
+                        document.querySelectorAll('input[name="_token"]').forEach(function (i) { i.value = d.token; });
+                        var m = document.querySelector('meta[name="csrf-token"]');
+                        if (m) m.setAttribute('content', d.token);
+                    }
+                })
+                .catch(function () {})
+                .then(done);
+        }, true);
+    })();
+    </script>
 </body>
 </html>
